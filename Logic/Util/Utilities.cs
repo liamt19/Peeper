@@ -1,4 +1,5 @@
-﻿using Peeper.Data;
+﻿using Peeper.Logic.Core;
+using Peeper.Logic.Data;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -8,7 +9,7 @@ using System.Text;
 using System.Threading.Tasks;
 using static System.Net.Mime.MediaTypeNames;
 
-namespace Peeper.Util
+namespace Peeper.Logic.Util
 {
     public static class Utilities
     {
@@ -48,22 +49,22 @@ namespace Peeper.Util
 
         public static void Log(Bitmask s)
         {
-            Log(FormattedString(s));
+            Log(s.FormattedString());
             Log($"0x{s:X}");
         }
 
         public static int Not(int color) => color ^ 1;
 
-        public static Bitmask SquareBB(int idx) => ((Bitmask)1) << idx;
+        public static Bitmask SquareBB(int idx) => (Bitmask)1 << idx;
 
         public static int CoordToIndex(int file, int rank) => 80 - (8 - file + 9 * rank);
         public static (int, int) IndexToCoord(int index) => (index % 9, index / 9);
 
-        public static Bitmask GetRankBB(int rank) => RankI_Mask << (9 * GetIndexRank(rank));
+        public static Bitmask GetRankBB(int rank) => RankI_Mask << 9 * GetIndexRank(rank);
         public static Bitmask GetFileBB(int file) => File9_Mask << GetIndexFile(file);
 
-        public static ulong Upper(this UInt128 b) => (ulong)(b >> 64);
-        public static ulong Lower(this UInt128 b) => (ulong)b;
+        public static ulong Upper(this Bitmask b) => (ulong)(b >> 64);
+        public static ulong Lower(this Bitmask b) => (ulong)b;
 
 
         public static Bitmask Shift(this Bitmask b, int dir)
@@ -85,7 +86,7 @@ namespace Peeper.Util
         }
 
         [MethodImpl(Inline)]
-        public static int ShiftUpDir(int color) => (color == Color.Black) ? Direction.North : Direction.South;
+        public static int ShiftUpDir(int color) => color == Black ? Direction.North : Direction.South;
 
         [MethodImpl(Inline)]
         public static int GetIndexFile(int index) => index % 9;
@@ -114,8 +115,8 @@ namespace Peeper.Util
         {
             return color switch
             {
-                Color.White => nameof(Color.White),
-                Color.Black => nameof(Color.Black),
+                White => nameof(White),
+                Black => nameof(Black),
                 _ => "None"
             };
         }
@@ -124,11 +125,11 @@ namespace Peeper.Util
         {
             return colorName.ToLower() switch
             {
-                "white" => Color.White,
-                "gote" => Color.White,
-                "black" => Color.Black,
-                "sente" => Color.Black,
-                _ => Color.ColorNB
+                "white" => White,
+                "gote" => White,
+                "black" => Black,
+                "sente" => Black,
+                _ => ColorNB
             };
         }
 
@@ -138,15 +139,15 @@ namespace Peeper.Util
         {
             return char.ToLower(c) switch
             {
-                'p' => Piece.Pawn,
-                'l' => Piece.Lance,
-                'n' => Piece.Knight,
-                's' => Piece.Silver,
-                'b' => Piece.Bishop,
-                'r' => Piece.Rook,
-                'g' => Piece.Gold,
-                'k' => Piece.King,
-                _ => Piece.None
+                'p' => Pawn,
+                'l' => Lance,
+                'n' => Knight,
+                's' => Silver,
+                'b' => Bishop,
+                'r' => Rook,
+                'g' => Gold,
+                'k' => King,
+                _ => None
             };
         }
 
@@ -154,22 +155,22 @@ namespace Peeper.Util
         {
             return pieceType switch
             {
-                Piece.Pawn => 'P',
-                Piece.Lance => 'L',
-                Piece.Knight => 'N',
-                Piece.Silver => 'S',
-                Piece.Bishop => 'B',
-                Piece.Rook => 'R',
+                Pawn => 'P',
+                Lance => 'L',
+                Knight => 'N',
+                Silver => 'S',
+                Bishop => 'B',
+                Rook => 'R',
 
-                Piece.PawnPromoted => 'P',
-                Piece.LancePromoted => 'L',
-                Piece.KnightPromoted => 'N',
-                Piece.SilverPromoted => 'S',
-                Piece.BishopPromoted => 'B',
-                Piece.RookPromoted => 'R',
+                PawnPromoted => 'P',
+                LancePromoted => 'L',
+                KnightPromoted => 'N',
+                SilverPromoted => 'S',
+                BishopPromoted => 'B',
+                RookPromoted => 'R',
 
-                Piece.Gold => 'G',
-                Piece.King => 'K',
+                Gold => 'G',
+                King => 'K',
                 _ => ' '
             };
         }
@@ -180,29 +181,29 @@ namespace Peeper.Util
             if (color == White)
                 t = char.ToLower(t);
 
-            return $"{(Piece.IsPromoted(type) ? "+" : "")}{t}";
+            return $"{(IsPromoted(type) ? "+" : "")}{t}";
         }
 
         public static string PieceToString(int type)
         {
             return type switch
             {
-                Piece.Pawn => nameof(Piece.Pawn),
-                Piece.Lance => nameof(Piece.Lance),
-                Piece.Knight => nameof(Piece.Knight),
-                Piece.Silver => nameof(Piece.Silver),
-                Piece.Bishop => nameof(Piece.Bishop),
-                Piece.Rook => nameof(Piece.Rook),
+                Pawn => nameof(Pawn),
+                Lance => nameof(Lance),
+                Knight => nameof(Knight),
+                Silver => nameof(Silver),
+                Bishop => nameof(Bishop),
+                Rook => nameof(Rook),
 
-                Piece.PawnPromoted => nameof(Piece.PawnPromoted),
-                Piece.LancePromoted => nameof(Piece.LancePromoted),
-                Piece.KnightPromoted => nameof(Piece.KnightPromoted),
-                Piece.SilverPromoted => nameof(Piece.SilverPromoted),
-                Piece.BishopPromoted => nameof(Piece.BishopPromoted),
-                Piece.RookPromoted => nameof(Piece.RookPromoted),
+                PawnPromoted => nameof(PawnPromoted),
+                LancePromoted => nameof(LancePromoted),
+                KnightPromoted => nameof(KnightPromoted),
+                SilverPromoted => nameof(SilverPromoted),
+                BishopPromoted => nameof(BishopPromoted),
+                RookPromoted => nameof(RookPromoted),
 
-                Piece.Gold => nameof(Piece.Gold),
-                Piece.King => nameof(Piece.King),
+                Gold => nameof(Gold),
+                King => nameof(King),
                 _ => "None"
             };
         }
@@ -210,11 +211,11 @@ namespace Peeper.Util
         public static string PieceToString(int color, int type) => $"{ColorToString(color)} {PieceToString(type)}";
         public static string IndexToString(int idx) => $"{GetIndexFileName(idx)}{GetIndexRankName(idx)}";
 
-        public static int GetIndexFileName(int idx) => 9 - (idx % 9);
-        public static char GetIndexRankName(int idx) => (char)('i' - (idx / 9));
+        public static int GetIndexFileName(int idx) => 9 - idx % 9;
+        public static char GetIndexRankName(int idx) => (char)('i' - idx / 9);
 
 
-        public static bool HasBit(this Bitmask b, int idx) => (b & SquareBB(idx)) != UInt128.Zero;
+        public static bool HasBit(this Bitmask b, int idx) => (b & SquareBB(idx)) != Bitmask.Zero;
 
 
         public static ReadOnlySpan<char> FileNames => ['i', 'h', 'g', 'f', 'e', 'd', 'c', 'b', 'a'];

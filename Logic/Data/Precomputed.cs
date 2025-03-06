@@ -1,8 +1,8 @@
-﻿
+﻿using Peeper.Logic.Util;
 using System.Runtime.InteropServices;
-using static Peeper.Data.Direction;
+using static Peeper.Logic.Data.Direction;
 
-namespace Peeper.Data
+namespace Peeper.Logic.Data
 {
     public static unsafe class Precomputed
     {
@@ -53,8 +53,8 @@ namespace Peeper.Data
         {
             for (int sq = 0; sq < SquareNB; sq++)
             {
-                RookRays[sq] = (GetFileBB(sq) | GetRankBB(sq)) & (~SquareBB(sq));
-                foreach (int dir in new int[] { Direction.NorthEast, Direction.NorthWest, Direction.SouthEast, Direction.SouthWest })
+                RookRays[sq] = (GetFileBB(sq) | GetRankBB(sq)) & ~SquareBB(sq);
+                foreach (int dir in new int[] { NorthEast, NorthWest, SouthEast, SouthWest })
                 {
                     int tempSq = sq;
                     while (DirectionOK(tempSq, dir))
@@ -82,7 +82,7 @@ namespace Peeper.Data
         private static void FillMask(Bitmask* dst, int[] directions, Bitmask? exclude = null)
         {
             for (int i = 0; i < SquareNB; i++)
-                directions.Where(x => DirectionOK(i, x)).ForEach(d => { dst[i] |= (SquareBB(i + d) & ~(exclude ?? 0)); });
+                directions.Where(x => DirectionOK(i, x)).ForEach(d => { dst[i] |= SquareBB(i + d) & ~(exclude ?? 0); });
         }
 
         private static void FillRingExcluding(Bitmask* dst, int[] exclude)
@@ -99,7 +99,7 @@ namespace Peeper.Data
             {
                 var up = ShiftUpDir(perspective);
                 var down = -up;
-                Bitmask upEdge = (perspective == Black) ? RankA_Mask : RankI_Mask;
+                Bitmask upEdge = perspective == Black ? RankA_Mask : RankI_Mask;
 
                 int colOffset = perspective * SquareNB;
 

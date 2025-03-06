@@ -1,5 +1,4 @@
-﻿
-namespace Peeper.Core
+﻿namespace Peeper.Logic.Data
 {
     public struct Move
     {

@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Peeper.Core
+namespace Peeper.Logic.Core
 {
     public unsafe partial class Position
     {

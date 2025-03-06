@@ -1,7 +1,6 @@
-﻿
-using System.Reflection;
+﻿using System.Reflection;
 
-namespace Peeper.Data
+namespace Peeper.Logic.Data
 {
 
     public static class Color

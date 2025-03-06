@@ -1,28 +1,28 @@
-﻿using Peeper.Data;
+﻿using Peeper.Logic.Data;
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics.X86;
 using System.Text;
 
-namespace Peeper.Util
+namespace Peeper.Logic.Util
 {
     public static unsafe class Interop
     {
         public static int Popcount(Bitmask value)
         {
-            return (int)UInt128.PopCount(value);
+            return (int)Bitmask.PopCount(value);
         }
 
         public static int LSB(Bitmask value)
         {
-            return (int)UInt128.TrailingZeroCount(value);
+            return (int)Bitmask.TrailingZeroCount(value);
         }
 
         public static int PopLSB(Bitmask* value)
         {
-            int sq = (int)UInt128.TrailingZeroCount(*value);
-            *value = *value & (*value - 1);
+            int sq = (int)Bitmask.TrailingZeroCount(*value);
+            *value = *value & *value - 1;
             return sq;
         }
 
@@ -32,7 +32,7 @@ namespace Peeper.Util
             var lo = Bmi2.X64.ParallelBitExtract(a.Lower(), mask.Lower());
             var hi = Bmi2.X64.ParallelBitExtract(a.Upper(), mask.Upper());
 
-            return ((hi << shift) | lo);
+            return hi << shift | lo;
         }
 
 
@@ -46,7 +46,7 @@ namespace Peeper.Util
 
         public static unsafe T* AlignedAllocZeroed<T>(nuint items, nuint alignment = 64)
         {
-            nuint bytes = ((nuint)sizeof(T) * (nuint)items);
+            nuint bytes = (nuint)sizeof(T) * items;
             void* block = NativeMemory.AlignedAlloc(bytes, alignment);
             NativeMemory.Clear(block, bytes);
 

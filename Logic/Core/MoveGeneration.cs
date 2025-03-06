@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace Peeper.Core
+namespace Peeper.Logic.Core
 {
     public unsafe partial class Position
     {

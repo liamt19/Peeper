@@ -1,17 +1,14 @@
-﻿using Peeper.Magic;
+﻿using Peeper.Logic.Data;
 using System.Drawing;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics.X86;
 using System.Threading.Tasks;
 
-namespace Peeper.Magic
+namespace Peeper.Logic.Magic
 {
     public static unsafe class MagicBitboards
     {
-        //public const nuint ROOK_TABLE_SIZE = 0x4CD480;
-        //public const nuint BISH_TABLE_SIZE = 0x48000;
-
         public const nuint ROOK_TABLE_SIZE = 0x79000;
         public const nuint BISH_TABLE_SIZE = 0x4F00;
         public const nuint LANCE_TABLE_SIZE = 0x900;
@@ -21,27 +18,24 @@ namespace Peeper.Magic
         private static readonly MagicSquare* BishopMagics;
         private static readonly MagicSquare* RookMagics;
 
-        private static readonly Bitmask* LanceTable;
-        private static readonly MagicSquare* LanceMagics;
-
-        private static readonly Bitmask* WhiteLanceTable;
-        private static readonly MagicSquare* WhiteLanceMagics;
         private static readonly Bitmask* BlackLanceTable;
+        private static readonly Bitmask* WhiteLanceTable;
         private static readonly MagicSquare* BlackLanceMagics;
+        private static readonly MagicSquare* WhiteLanceMagics;
 
         static MagicBitboards()
         {
             BishopTable = AlignedAllocZeroed<Bitmask>(BISH_TABLE_SIZE);
             RookTable = AlignedAllocZeroed<Bitmask>(ROOK_TABLE_SIZE);
 
-            BishopMagics = InitializeMagics(Piece.Bishop, BishopTable);
-            RookMagics = InitializeMagics(Piece.Rook, RookTable);
+            BishopMagics = InitializeMagics(Bishop, BishopTable);
+            RookMagics = InitializeMagics(Rook, RookTable);
 
-            WhiteLanceTable = AlignedAllocZeroed<Bitmask>(LANCE_TABLE_SIZE);
             BlackLanceTable = AlignedAllocZeroed<Bitmask>(LANCE_TABLE_SIZE);
+            WhiteLanceTable = AlignedAllocZeroed<Bitmask>(LANCE_TABLE_SIZE);
 
-            WhiteLanceMagics = InitializeLanceMagics(White, WhiteLanceTable);
             BlackLanceMagics = InitializeLanceMagics(Black, BlackLanceTable);
+            WhiteLanceMagics = InitializeLanceMagics(White, WhiteLanceTable);
         }
 
 
@@ -68,7 +62,7 @@ namespace Peeper.Magic
                 ref MagicSquare m = ref magicArray[sq];
                 m.mask = GetBlockerMask(pt, sq);
 
-                m.attacks = (sq == I9) ? table : magicArray[sq - 1].attacks + size;
+                m.attacks = sq == I9 ? table : magicArray[sq - 1].attacks + size;
 
                 b = 0;
                 size = 0;
@@ -77,7 +71,7 @@ namespace Peeper.Magic
                     m.attacks[Pext(b, m.mask)] = SlidingAttacks(pt, sq, b);
 
                     size++;
-                    b = (b - m.mask) & m.mask;
+                    b = b - m.mask & m.mask;
                 }
                 while (b != 0);
             }
@@ -89,7 +83,7 @@ namespace Peeper.Magic
         {
             Bitmask mask = 0UL;
 
-            int[] dirs = (pt == Bishop) ? [Direction.NorthEast, Direction.NorthWest, Direction.SouthEast, Direction.SouthWest]
+            int[] dirs = pt == Bishop ? [Direction.NorthEast, Direction.NorthWest, Direction.SouthEast, Direction.SouthWest]
                                         : [Direction.North, Direction.East, Direction.South, Direction.West];
 
             foreach (int dir in dirs)
@@ -113,7 +107,7 @@ namespace Peeper.Magic
 
         private static Bitmask GetBlockerMask(int pt, int idx)
         {
-            Bitmask mask = (pt == Piece.Bishop) ? BishopRay(idx) : RookRay(idx);
+            Bitmask mask = pt == Bishop ? BishopRay(idx) : RookRay(idx);
 
             int rank = GetIndexRank(idx);
             int file = GetIndexFile(idx);
@@ -138,7 +132,7 @@ namespace Peeper.Magic
 
         public static Bitmask GetLanceMoves(int idx, int color, Bitmask occ)
         {
-            ref MagicSquare m = ref ((color == Black) ? ref BlackLanceMagics[idx] : ref WhiteLanceMagics[idx]);
+            ref MagicSquare m = ref (color == Black ? ref BlackLanceMagics[idx] : ref WhiteLanceMagics[idx]);
             return m.attacks[Pext(occ, m.mask)];
         }
 
@@ -154,7 +148,7 @@ namespace Peeper.Magic
                 ref MagicSquare m = ref magicArray[sq];
                 m.mask = ForwardRay(color, sq) & ~(RankA_Mask | RankI_Mask);
 
-                m.attacks = (sq == I9) ? table : (magicArray[sq - 1].attacks + size);
+                m.attacks = sq == I9 ? table : magicArray[sq - 1].attacks + size;
 
                 b = 0;
                 size = 0;
@@ -163,7 +157,7 @@ namespace Peeper.Magic
                     m.attacks[Pext(b, m.mask)] = LanceAttacks(color, sq, b);
 
                     size++;
-                    b = (b - m.mask) & m.mask;
+                    b = b - m.mask & m.mask;
                 }
                 while (b != 0);
             }

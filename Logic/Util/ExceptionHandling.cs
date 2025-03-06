@@ -3,7 +3,7 @@
 
 using System.Diagnostics;
 
-namespace Peeper.Util
+namespace Peeper.Logic.Util
 {
     public static class ExceptionHandling
     {

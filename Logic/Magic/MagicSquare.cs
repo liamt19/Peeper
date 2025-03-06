@@ -1,5 +1,4 @@
-﻿
-namespace Peeper.Magic
+﻿namespace Peeper.Logic.Magic
 {
     public unsafe struct MagicSquare
     {
