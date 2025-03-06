@@ -4,7 +4,9 @@
     {
         static void Main(string[] args)
         {
-            Console.WriteLine("Hello, World!");
+            Position pos = new Position();
+            Log(pos.ToString());
+            Console.ReadLine();
         }
     }
 }
