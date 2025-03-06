@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Peeper.Core
 {
-    public class Position
+    public unsafe partial class Position
     {
         public Bitboard bb;
 

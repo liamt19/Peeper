@@ -10,7 +10,7 @@ namespace Peeper.Util
 
         [System.Runtime.CompilerServices.MethodImpl(MethodImplOptions.NoInlining)]
         [Conditional("ENABLE_ASSERTIONS")]
-        public static void Assert(bool condition, string message)
+        public static void Assert(bool condition, string? message = null)
         {
 #if DEBUG
             Debug.Assert(condition, message);

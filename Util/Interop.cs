@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
+using System.Runtime.Intrinsics.X86;
 using System.Text;
 
 namespace Peeper.Util
@@ -23,6 +24,15 @@ namespace Peeper.Util
             int sq = (int)UInt128.TrailingZeroCount(*value);
             *value = *value & (*value - 1);
             return sq;
+        }
+
+        public static ulong Pext(Bitmask a, Bitmask mask)
+        {
+            int shift = (int)ulong.PopCount(mask.Lower());
+            var lo = Bmi2.X64.ParallelBitExtract(a.Lower(), mask.Lower());
+            var hi = Bmi2.X64.ParallelBitExtract(a.Upper(), mask.Upper());
+
+            return ((hi << shift) | lo);
         }
 
 

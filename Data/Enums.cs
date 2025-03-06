@@ -56,6 +56,38 @@ namespace Peeper.Data
         public const int RankNB = 9;
     }
 
+    public static class Files
+    {
+        public const int File1 = 0;
+        public const int File2 = 1;
+        public const int File3 = 2;
+        public const int File4 = 3;
+        public const int File5 = 4;
+        public const int File6 = 5;
+        public const int File7 = 6;
+        public const int File8 = 7;
+        public const int File9 = 8;
+
+        public const int FileNB = 9;
+    }
+
+
+    public static class Direction
+    {
+        public const int North = 9;
+        public const int East = 1;
+        public const int South = -North;
+        public const int West = -East;
+
+        public const int NorthEast = North + East;
+        public const int SouthEast = South + East;
+        public const int SouthWest = South + West;
+        public const int NorthWest = North + West;
+
+        public const int NorthNorth = North + North;
+        public const int SouthSouth = South + South;
+    }
+
     public static class Squares
     {
         public const int I9 = 0;

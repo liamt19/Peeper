@@ -46,6 +46,12 @@ namespace Peeper.Util
             Debug.WriteLine(s);
         }
 
+        public static void Log(Bitmask s)
+        {
+            Log(FormattedString(s));
+            Log($"0x{s:X}");
+        }
+
         public static int Not(int color) => color ^ 1;
 
         public static Bitmask SquareBB(int idx) => ((Bitmask)1) << idx;
@@ -53,6 +59,56 @@ namespace Peeper.Util
         public static int CoordToIndex(int file, int rank) => 80 - (8 - file + 9 * rank);
         public static (int, int) IndexToCoord(int index) => (index % 9, index / 9);
 
+        public static Bitmask GetRankBB(int rank) => RankI_Mask << (9 * GetIndexRank(rank));
+        public static Bitmask GetFileBB(int file) => File9_Mask << GetIndexFile(file);
+
+        public static ulong Upper(this UInt128 b) => (ulong)(b >> 64);
+        public static ulong Lower(this UInt128 b) => (ulong)b;
+
+
+        public static Bitmask Shift(this Bitmask b, int dir)
+        {
+            return dir switch
+            {
+                Direction.North      => b << 9,
+                Direction.South      => b >> 9,
+                Direction.NorthNorth => b << 18,
+                Direction.SouthSouth => b >> 18,
+                Direction.East       => (b & ~File1_Mask) << 1,
+                Direction.West       => (b & ~File9_Mask) >> 1,
+                Direction.NorthEast  => (b & ~File1_Mask) << 10,
+                Direction.NorthWest  => (b & ~File9_Mask) << 8,
+                Direction.SouthEast  => (b & ~File1_Mask) >> 8,
+                Direction.SouthWest  => (b & ~File9_Mask) >> 10,
+                _ => 0
+            };
+        }
+
+        [MethodImpl(Inline)]
+        public static int ShiftUpDir(int color) => (color == Color.Black) ? Direction.North : Direction.South;
+
+        [MethodImpl(Inline)]
+        public static int GetIndexFile(int index) => index % 9;
+
+        [MethodImpl(Inline)]
+        public static int GetIndexRank(int index) => index / 9;
+
+        public static bool SquareOK(int sq)
+        {
+            return sq >= I9 && sq <= A1;
+        }
+
+        public static bool DirectionOK(int sq, int dir)
+        {
+            if (!SquareOK(sq + dir))
+            {
+                return false;
+            }
+
+            int rankDistance = Math.Abs(GetIndexRank(sq) - GetIndexRank(sq + dir));
+            int fileDistance = Math.Abs(GetIndexFile(sq) - GetIndexFile(sq + dir));
+            return Math.Max(rankDistance, fileDistance) <= 2;
+        }
 
         public static string ColorToString(int color)
         {
@@ -198,9 +254,29 @@ namespace Peeper.Util
                 sb.AppendLine("+----+----+----+----+----+----+----+----+----+  ");
             }
 
+            return sb.ToString();
+        }
 
-            
+        public static void ForEach<T>(this IEnumerable<T> enumeration, Action<T> action)
+        {
+            foreach (T item in enumeration)
+                action(item);
+        }
 
+        public static string FormattedString(this Bitmask b)
+        {
+            StringBuilder sb = new StringBuilder();
+            for (int y = 0; y < 9; y++)
+            {
+                for (int x = 0; x < 9; x++)
+                {
+                    int idx = CoordToIndex(x, y);
+                    sb.Append(b.HasBit(idx) ? '1' : '\u00B7');
+                }
+
+                if (y != 8)
+                    sb.AppendLine();
+            }
             return sb.ToString();
         }
     }
