@@ -9,6 +9,11 @@ namespace Peeper.Logic.Util
 {
     public static unsafe class Interop
     {
+        public static bool MoreThanOne(Bitmask value)
+        {
+            return (value & (value - 1)) != 0;
+        }
+
         public static int Popcount(Bitmask value)
         {
             return (int)Bitmask.PopCount(value);

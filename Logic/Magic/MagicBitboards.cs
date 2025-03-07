@@ -39,19 +39,19 @@ namespace Peeper.Logic.Magic
         }
 
 
-        public static Bitmask GetRookMoves(int idx, Bitmask occ)
+        public static Bitmask GetRookMoves(int sq, Bitmask occ)
         {
-            ref MagicSquare m = ref RookMagics[idx];
+            ref MagicSquare m = ref RookMagics[sq];
             return m.attacks[Pext(occ, m.mask)];
         }
 
-        public static Bitmask GetBishopMoves(int idx, Bitmask occ)
+        public static Bitmask GetBishopMoves(int sq, Bitmask occ)
         {
-            ref MagicSquare m = ref BishopMagics[idx];
+            ref MagicSquare m = ref BishopMagics[sq];
             return m.attacks[Pext(occ, m.mask)];
         }
 
-        private static MagicSquare* InitializeMagics(int pt, Bitmask* table)
+        private static MagicSquare* InitializeMagics(int type, Bitmask* table)
         {
             MagicSquare* magicArray = AlignedAllocZeroed<MagicSquare>(SquareNB);
 
@@ -60,7 +60,7 @@ namespace Peeper.Logic.Magic
             for (int sq = I9; sq <= A1; sq++)
             {
                 ref MagicSquare m = ref magicArray[sq];
-                m.mask = GetBlockerMask(pt, sq);
+                m.mask = GetBlockerMask(type, sq);
 
                 m.attacks = sq == I9 ? table : magicArray[sq - 1].attacks + size;
 
@@ -68,7 +68,7 @@ namespace Peeper.Logic.Magic
                 size = 0;
                 do
                 {
-                    m.attacks[Pext(b, m.mask)] = SlidingAttacks(pt, sq, b);
+                    m.attacks[Pext(b, m.mask)] = SlidingAttacks(type, sq, b);
 
                     size++;
                     b = b - m.mask & m.mask;
@@ -79,16 +79,16 @@ namespace Peeper.Logic.Magic
             return magicArray;
         }
 
-        private static Bitmask SlidingAttacks(int pt, int idx, Bitmask occupied)
+        private static Bitmask SlidingAttacks(int type, int sq, Bitmask occupied)
         {
             Bitmask mask = 0UL;
 
-            int[] dirs = pt == Bishop ? [Direction.NorthEast, Direction.NorthWest, Direction.SouthEast, Direction.SouthWest]
+            int[] dirs = type == Bishop ? [Direction.NorthEast, Direction.NorthWest, Direction.SouthEast, Direction.SouthWest]
                                         : [Direction.North, Direction.East, Direction.South, Direction.West];
 
             foreach (int dir in dirs)
             {
-                int tempSq = idx;
+                int tempSq = sq;
                 while (DirectionOK(tempSq, dir))
                 {
                     tempSq += dir;
@@ -105,12 +105,12 @@ namespace Peeper.Logic.Magic
         }
 
 
-        private static Bitmask GetBlockerMask(int pt, int idx)
+        private static Bitmask GetBlockerMask(int type, int sq)
         {
-            Bitmask mask = pt == Bishop ? BishopRay(idx) : RookRay(idx);
+            Bitmask mask = type == Bishop ? BishopRay(sq) : RookRay(sq);
 
-            int rank = GetIndexRank(idx);
-            int file = GetIndexFile(idx);
+            int rank = GetIndexRank(sq);
+            int file = GetIndexFile(sq);
 
             if (rank == RankA)
                 mask &= ~RankI_Mask;
@@ -127,14 +127,31 @@ namespace Peeper.Logic.Magic
                 mask &= ~File1_Mask & ~File9_Mask;
 
             return mask;
+
+            Bitmask RookRay(int sq) => (GetFileBB(sq) | GetRankBB(sq)) & ~SquareBB(sq);
+            Bitmask BishopRay(int sq)
+            {
+                Bitmask v = 0;
+                foreach (int dir in new int[] { Direction.NorthEast, Direction.NorthWest, Direction.SouthEast, Direction.SouthWest })
+                {
+                    int tempSq = sq;
+                    while (DirectionOK(tempSq, dir))
+                    {
+                        tempSq += dir;
+                        v |= SquareBB(tempSq);
+                    }
+                }
+                return v;
+            }
         }
 
 
-        public static Bitmask GetLanceMoves(int idx, int color, Bitmask occ)
+        public static Bitmask GetLanceMoves(int color, int sq, Bitmask occ)
         {
-            ref MagicSquare m = ref (color == Black ? ref BlackLanceMagics[idx] : ref WhiteLanceMagics[idx]);
+            ref MagicSquare m = ref (color == Black ? ref BlackLanceMagics[sq] : ref WhiteLanceMagics[sq]);
             return m.attacks[Pext(occ, m.mask)];
         }
+
 
 
         private static MagicSquare* InitializeLanceMagics(int color, Bitmask* table)
@@ -164,10 +181,10 @@ namespace Peeper.Logic.Magic
 
             return magicArray;
 
-            Bitmask LanceAttacks(int color, int idx, Bitmask occupied)
+            Bitmask LanceAttacks(int color, int sq, Bitmask occupied)
             {
                 Bitmask mask = 0UL;
-                int tempSq = idx;
+                int tempSq = sq;
                 while (DirectionOK(tempSq, ShiftUpDir(color)))
                 {
                     tempSq += ShiftUpDir(color);
@@ -179,6 +196,15 @@ namespace Peeper.Logic.Magic
                     }
                 }
                 return mask;
+            }
+
+            Bitmask ForwardRay(int color, int sq)
+            {
+                int dir = (color == Black ? Direction.North : Direction.South);
+                Bitmask v = 0;
+                for (int d = sq + dir; SquareOK(d); d += dir)
+                    v |= SquareBB(d);
+                return v;
             }
         }
     }

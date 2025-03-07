@@ -38,6 +38,18 @@ namespace Peeper.Logic.Data
         public const int PromotionNB = 6;
 
         public static bool IsPromoted(int type) => type >= PawnPromoted && type <= RookPromoted;
+        public static bool CanPromote(int type) => (type <= Rook);
+        public static int Promote(int type)
+        {
+            Assert(CanPromote(type));
+            return type + 6;
+        }
+
+        public static int Demote(int type)
+        {
+            Assert(IsPromoted(type));
+            return type - 6;
+        }
     }
 
     public static class Ranks

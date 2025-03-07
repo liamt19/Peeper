@@ -15,6 +15,8 @@ namespace Peeper.Logic.Util
     {
         public const MethodImplOptions Inline = MethodImplOptions.AggressiveInlining;
 
+        public const int MoveListSize = 600;
+
         public static readonly Bitmask AllMask = new(0x1ffff, 0xffffffffffffffff);
         public static readonly Bitmask EmptyMask = new();
 
@@ -37,6 +39,9 @@ namespace Peeper.Logic.Util
         public static readonly Bitmask File2_Mask = new(0x8040, 0x2010080402010080);
         public static readonly Bitmask File1_Mask = new(0x10080, 0x4020100804020100);
 
+        public static readonly Bitmask BlackPromotionSquares = new(0x1FFFF, 0xFFC0000000000000);
+        public static readonly Bitmask WhitePromotionSquares = new(0, 0x7FFFFFF);
+
         public const string InitialFEN = @"lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1";
 
 
@@ -55,13 +60,25 @@ namespace Peeper.Logic.Util
 
         public static int Not(int color) => color ^ 1;
 
-        public static Bitmask SquareBB(int idx) => (Bitmask)1 << idx;
+        public static Bitmask SquareBB(int sq) => (Bitmask)1 << sq;
 
         public static int CoordToIndex(int file, int rank) => 80 - (8 - file + 9 * rank);
         public static (int, int) IndexToCoord(int index) => (index % 9, index / 9);
 
         public static Bitmask GetRankBB(int rank) => RankI_Mask << 9 * GetIndexRank(rank);
         public static Bitmask GetFileBB(int file) => File9_Mask << GetIndexFile(file);
+
+        public static Bitmask ForcedPromotionSquares(int color, int type)
+        {
+            return type switch
+            {
+                Pawn or Lance when color is Black => RankI_Mask,
+                Pawn or Lance when color is White => RankA_Mask,
+                Knight when color is Black => (RankH_Mask | RankI_Mask),
+                Knight when color is White => (RankA_Mask | RankB_Mask),
+                _ => 0
+            };
+        }
 
         public static ulong Upper(this Bitmask b) => (ulong)(b >> 64);
         public static ulong Lower(this Bitmask b) => (ulong)b;
@@ -209,13 +226,13 @@ namespace Peeper.Logic.Util
         }
 
         public static string PieceToString(int color, int type) => $"{ColorToString(color)} {PieceToString(type)}";
-        public static string IndexToString(int idx) => $"{GetIndexFileName(idx)}{GetIndexRankName(idx)}";
+        public static string IndexToString(int sq) => $"{GetIndexFileName(sq)}{GetIndexRankName(sq)}";
 
-        public static int GetIndexFileName(int idx) => 9 - idx % 9;
-        public static char GetIndexRankName(int idx) => (char)('i' - idx / 9);
+        public static int GetIndexFileName(int sq) => 9 - sq % 9;
+        public static char GetIndexRankName(int sq) => (char)('i' - sq / 9);
 
 
-        public static bool HasBit(this Bitmask b, int idx) => (b & SquareBB(idx)) != Bitmask.Zero;
+        public static bool HasBit(this Bitmask b, int sq) => (b & SquareBB(sq)) != Bitmask.Zero;
 
 
         public static ReadOnlySpan<char> FileNames => ['i', 'h', 'g', 'f', 'e', 'd', 'c', 'b', 'a'];
@@ -231,15 +248,15 @@ namespace Peeper.Logic.Util
                 sb.Append("|");
                 for (int x = 0; x < 9; x++)
                 {
-                    int idx = CoordToIndex(x, y);
-                    int pt = bb.GetPieceAtIndex(idx);
-                    int pc = bb.GetColorAtIndex(idx);
+                    int sq = CoordToIndex(x, y);
+                    int pt = bb.GetPieceAtIndex(sq);
+                    int color = bb.GetColorAtIndex(sq);
 
                     sb.Append(' ');
 
                     if (pt != None)
                     {
-                        var c = PieceToSFen(pc, pt);
+                        var c = PieceToSFen(color, pt);
                         sb.Append(c.Length == 1 ? $" {c}" : c);
                     }
                     else
@@ -271,12 +288,36 @@ namespace Peeper.Logic.Util
             {
                 for (int x = 0; x < 9; x++)
                 {
-                    int idx = CoordToIndex(x, y);
-                    sb.Append(b.HasBit(idx) ? '1' : '\u00B7');
+                    int sq = CoordToIndex(x, y);
+                    sb.Append(b.HasBit(sq) ? '1' : '\u00B7');
                 }
 
                 if (y != 8)
                     sb.AppendLine();
+            }
+            return sb.ToString();
+        }
+
+
+        public static unsafe string Stringify(ScoredMove* list, int listSize = 0) => Stringify(new Span<ScoredMove>(list, MoveListSize), listSize);
+
+        public static string Stringify(Span<ScoredMove> list, int listSize = 0)
+        {
+            StringBuilder sb = new StringBuilder();
+            int loopMax = (listSize > 0) ? Math.Min(list.Length, listSize) : list.Length;
+            for (int i = 0; i < loopMax; i++)
+            {
+                if (list[i].Move.Equals(Move.Null))
+                {
+                    break;
+                }
+                string s = list[i].Move.ToString();
+                sb.Append(s + ", ");
+            }
+
+            if (sb.Length > 3)
+            {
+                sb.Remove(sb.Length - 2, 2);
             }
             return sb.ToString();
         }
