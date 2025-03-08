@@ -163,7 +163,55 @@ namespace Peeper.Logic.Core
         public override string ToString()
         {
             return PrintBoard(this);
-        } 
+        }
+
+        public Bitboard DebugClone()
+        {
+            Bitboard cpy = new();
+            for (int i = 0; i < PieceNB; i++) cpy.Pieces[i] = Pieces[i];
+            for (int i = 0; i < ColorNB; i++) cpy.Colors[i] = Colors[i];
+            for (int i = 0; i < SquareNB; i++) cpy.Mailbox[i] = Mailbox[i];
+            return cpy;
+        }
+
+        public void VerifyUnchangedFrom(Bitboard other)
+        {
+            for (int i = 0; i < PieceNB; i++) 
+                Assert(Pieces[i] == other.Pieces[i]);
+
+            for (int i = 0; i < ColorNB; i++)
+                Assert(Colors[i] == other.Colors[i]);
+
+            for (int i = 0; i < SquareNB; i++)
+                Assert(Mailbox[i] == other.Mailbox[i]);
+        }
+
+        public void VerifyOK()
+        {
+            Assert((White & Black) == 0);
+
+            Bitmask occupancyMask = 0;
+            for (int type = 0; type < PieceNB; type++)
+            {
+                occupancyMask |= Pieces[type];
+
+                int maskPop = Popcount(Pieces[type]);
+                int mailCount = 0;
+                for (int sq = 0; sq < SquareNB; sq++)
+                {
+                    mailCount += (Mailbox[sq] == type) ? 1 : 0;
+                }
+
+                Assert(mailCount == maskPop);
+
+                for (int type2 = type + 1; type2 < PieceNB; type2++)
+                {
+                    Assert((Pieces[type] & Pieces[type2]) == 0);
+                }
+            }
+
+            Assert((Colors[Black] | Colors[White]) == occupancyMask);
+        }
     }
 
 }

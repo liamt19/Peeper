@@ -44,7 +44,7 @@ namespace Peeper.Logic.Data
         {
             if (IsDrop)
             {
-                return $"{PieceToFENChar(DroppedPiece)}*{IndexToString(To)}";
+                return $"{PieceToSFenChar(DroppedPiece)}*{IndexToString(To)}";
             }
 
             return $"{IndexToString(From)}{IndexToString(To)}{(IsPromotion ? "+" : "")}";

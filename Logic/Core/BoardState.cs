@@ -9,6 +9,7 @@ namespace Peeper.Logic.Core
         public BitmaskBuffer2 BlockingPieces;
         public BitmaskBuffer2 Pinners;
         public Bitmask Checkers = 0;
+        public HandBuffer Hands;
         public fixed int KingSquares[2];
         public int CapturedPiece = None;
 

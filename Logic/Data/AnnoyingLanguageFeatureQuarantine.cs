@@ -10,4 +10,7 @@ namespace Peeper.Logic.Data
 
     [InlineArray(ColorNB)]
     public struct BitmaskBuffer2 { Bitmask _; }
+
+    [InlineArray(ColorNB)]
+    public struct HandBuffer { Hand _; }
 }

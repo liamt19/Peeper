@@ -98,17 +98,12 @@ namespace Peeper.Logic.Core
         {
             AddAllMoves(ref list);
 
-            int ourKing = State->KingSquares[ToMove];
-            int theirKing = State->KingSquares[Not(ToMove)];
-            var pinned = State->BlockingPieces[ToMove];
-
-            var s = list.ToSpan();
             int curr = 0;
             int end = list.Size - 1;
 
-            while (curr != end)
+            while (curr < end)
             {
-                if (!IsLegal(list[curr].Move, ourKing, theirKing, pinned))
+                if (!IsLegal(list[curr].Move))
                 {
                     list[curr] = list[--end];
                 }

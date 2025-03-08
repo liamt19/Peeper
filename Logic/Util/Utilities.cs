@@ -168,37 +168,32 @@ namespace Peeper.Logic.Util
             };
         }
 
-        public static char PieceToFENChar(int pieceType)
+        public static char PieceToSFenChar(int type)
         {
-            return pieceType switch
+            return type switch
             {
-                Pawn => 'P',
-                Lance => 'L',
-                Knight => 'N',
-                Silver => 'S',
-                Bishop => 'B',
-                Rook => 'R',
-
-                PawnPromoted => 'P',
-                LancePromoted => 'L',
-                KnightPromoted => 'N',
-                SilverPromoted => 'S',
-                BishopPromoted => 'B',
-                RookPromoted => 'R',
-
+                Pawn or PawnPromoted => 'P',
+                Lance or LancePromoted => 'L',
+                Knight or KnightPromoted => 'N',
+                Silver or SilverPromoted => 'S',
+                Bishop or BishopPromoted => 'B',
+                Rook or RookPromoted => 'R',
                 Gold => 'G',
                 King => 'K',
                 _ => ' '
             };
         }
 
+        public static char PieceToSFenChar(int color, int type)
+        {
+            char c = PieceToSFenChar(type);
+            return (color == Black) ? c : char.ToLower(c);
+        }
+
         public static string PieceToSFen(int color, int type)
         {
-            char t = PieceToFENChar(type);
-            if (color == White)
-                t = char.ToLower(t);
-
-            return $"{(IsPromoted(type) ? "+" : "")}{t}";
+            char c = PieceToSFenChar(color, type);
+            return $"{(IsPromoted(type) ? "+" : "")}{c}";
         }
 
         public static string PieceToString(int type)
@@ -251,12 +246,12 @@ namespace Peeper.Logic.Util
                 {
                     int sq = CoordToIndex(x, y);
                     int pt = bb.GetPieceAtIndex(sq);
-                    int color = bb.GetColorAtIndex(sq);
 
                     sb.Append(' ');
 
                     if (pt != None)
                     {
+                        int color = bb.GetColorAtIndex(sq);
                         var c = PieceToSFen(color, pt);
                         sb.Append(c.Length == 1 ? $" {c}" : c);
                     }
@@ -281,6 +276,10 @@ namespace Peeper.Logic.Util
             foreach (T item in enumeration)
                 action(item);
         }
+
+        public static bool EqualsIgnoreCase(this string s, string other) => s.Equals(other, StringComparison.OrdinalIgnoreCase);
+        public static bool StartsWithIgnoreCase(this string s, string other) => s.StartsWith(other, StringComparison.OrdinalIgnoreCase);
+        public static bool ContainsIgnoreCase(this string s, string other) => s.Contains(other, StringComparison.OrdinalIgnoreCase);
 
         public static string FormattedString(this Bitmask b)
         {

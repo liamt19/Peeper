@@ -15,7 +15,6 @@ namespace Peeper.Logic.Core
 
         public BoardState* State;
         public BoardState* NextState => (State + 1);
-
         private BoardState* _stateBlock;
 
         public bool Checked => State->Checkers != 0;
@@ -39,6 +38,29 @@ namespace Peeper.Logic.Core
         ~Position()
         {
             NativeMemory.AlignedFree(_stateBlock);
+        }
+
+        public bool TryMakeMove(string moveStr)
+        {
+            MoveList list = new();
+            GenerateLegal(ref list);
+            int size = list.Size;
+            for (int i = 0; i < size; i++)
+            {
+                Move m = list[i].Move;
+                if (m.ToString().ToLower().Equals(moveStr.ToLower()))
+                {
+                    MakeMove(m);
+                    return true;
+                }
+
+                if (i == size - 1)
+                {
+                    Log($"No move '{moveStr}' found, try one of the following: ");
+                    Log($"{Stringify(list.ToSpan())}");
+                }
+            }
+            return false;
         }
 
         public void MakeMove(Move move)
@@ -68,34 +90,28 @@ namespace Peeper.Logic.Core
 
             State->CapturedPiece = theirPiece;
 
-
             if (!move.IsDrop)
             {
                 bb.RemovePiece(ourColor, ourPiece, moveFrom);
             }
 
-            if (move.IsDrop)
+            if (theirPiece != None)
             {
-                bb.AddPiece(ourColor, move.DroppedPiece, moveTo);
+                bb.RemovePiece(theirColor, theirPiece, moveTo);
             }
-            else if (move.IsPromotion)
-            {
-                bb.AddPiece(ourColor, Piece.Promote(ourPiece), moveTo);
-            }
-            else
-            {
-                if (theirPiece != None) {
-                    bb.RemovePiece(theirColor, theirPiece, moveTo);
-                }
 
-                bb.AddPiece(ourColor, ourPiece, moveTo);
-            }
+            int typeToAdd = move.IsPromotion ? Piece.Promote(ourPiece)
+                          : move.IsDrop      ? move.DroppedPiece
+                          :                    ourPiece;
+
+            bb.AddPiece(ourColor, typeToAdd, moveTo);
 
             ToMove = Not(ToMove);
 
             State->Checkers = bb.AttackersTo(State->KingSquares[theirColor], bb.Occupancy) & bb.Colors[ourColor];
 
             UpdateState();
+            bb.VerifyOK();
         }
 
         public void UnmakeMove(Move move)
@@ -109,28 +125,25 @@ namespace Peeper.Logic.Core
             int ourColor = Not(ToMove);
             int theirColor = ToMove;
 
-            if (move.IsDrop)
+            bb.RemovePiece(ourColor, ourPiece, moveTo);
+
+            if (State->CapturedPiece != Piece.None)
             {
-                bb.RemovePiece(ourColor, ourPiece, moveTo);
+                bb.AddPiece(theirColor, State->CapturedPiece, moveTo);
             }
-            else if (move.IsPromotion)
+
+            if (move.IsPromotion)
             {
-                //  Remove the promotion piece and replace it with a pawn
-                bb.RemovePiece(ourColor, ourPiece, moveTo);
                 bb.AddPiece(ourColor, Piece.Demote(ourPiece), moveFrom);
             }
-            else
+            else if (!move.IsDrop)
             {
-                if (State->CapturedPiece != Piece.None)
-                {
-                    bb.AddPiece(theirColor, State->CapturedPiece, moveTo);
-                }
-
                 bb.AddPiece(ourColor, ourPiece, moveFrom);
             }
 
             State--;
             ToMove = Not(ToMove);
+            bb.VerifyOK();
         }
 
         [MethodImpl(Inline)]
@@ -160,32 +173,38 @@ namespace Peeper.Logic.Core
 
         public ulong Perft(int depth)
         {
+            if (depth == 0)
+            {
+                return 1;
+            }
+
             MoveList list = new();
             GenerateLegal(ref list);
-
-            if (depth == 1)
-            {
-                return (ulong)list.Size;
-            }
 
             ulong n = 0;
             for (int i = 0; i < list.Size; i++)
             {
                 Move m = list[i].Move;
+
+                Bitboard temp = bb.DebugClone();
+
                 MakeMove(m);
                 n += Perft(depth - 1);
                 UnmakeMove(m);
+
+                bb.VerifyUnchangedFrom(temp);
             }
+
             return n;
         }
 
 
-        public void LoadFromSFen(string fen)
+        public void LoadFromSFen(string sfen)
         {
             bb.Clear();
             MoveNumber = 1;
 
-            var fields = fen.Split(' ');
+            var fields = sfen.Split(' ');
 
             var ranks = fields[0].Split('/');
             for (int splitN = 0; splitN < RankNB; splitN++)
@@ -223,19 +242,73 @@ namespace Peeper.Logic.Core
             }
 
             ToMove = fields[1] == "b" ? Black : White;
-            if (fields.Length > 3) { }
+            
+            State->Hands[Black].SetFromSFen(fields[2], Black);
+            State->Hands[White].SetFromSFen(fields[2], White);
+
+            MoveNumber = int.Parse(fields[3]);
 
             SetState();
+
+            var f = GetSFen();
+            Assert(f == sfen, $"Loaded: {sfen}\n   Got: {f}");
         }
 
         public string GetSFen()
         {
             StringBuilder sb = new StringBuilder();
 
+            for (int y = RankI; y <= RankA; y++)
+            {
+                int gap = 0;
+                for (int x = File1; x <= File9; x++)
+                {
+                    int sq = CoordToIndex(x, y);
+                    int type = bb.GetPieceAtIndex(sq);
 
+                    if (type != None)
+                    {
+                        if (gap != 0)
+                        {
+                            sb.Append(gap);
+                            gap = 0;
+                        }
 
-            //return sb.ToString();
-            return null;
+                        int color = bb.GetColorAtIndex(sq);
+                        sb.Append(PieceToSFen(color, type));
+
+                        continue;
+                    }
+                    else
+                    {
+                        gap++;
+                    }
+
+                    if (x == File9)
+                    {
+                        sb.Append(gap);
+                    }
+                }
+
+                if (y != RankA)
+                    sb.Append('/');
+            }
+
+            sb.Append(ToMove == Black ? " b " : " w ");
+            
+            if (State->Hands[Black].IsEmpty && State->Hands[White].IsEmpty)
+            {
+                sb.Append("-");
+            }
+            else
+            {
+                sb.Append(State->Hands[Black].ToString(Black));
+                sb.Append(State->Hands[White].ToString(White));
+            }
+
+                sb.Append($" {MoveNumber}");
+
+            return sb.ToString();
         }
 
         public override string ToString()

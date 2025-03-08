@@ -1,5 +1,5 @@
 ﻿
-#define ENABLE_ASSERTIONS
+#define DO_ASSERTS
 
 using System.Diagnostics;
 
@@ -9,7 +9,9 @@ namespace Peeper.Logic.Util
     {
 
         [System.Runtime.CompilerServices.MethodImpl(MethodImplOptions.NoInlining)]
+#if RELEASE || !DO_ASSERTS
         [Conditional("ENABLE_ASSERTIONS")]
+#endif
         public static void Assert(bool condition, string? message = null)
         {
 #if DEBUG
