@@ -29,13 +29,28 @@
                 else if(cmd.EqualsIgnoreCase("list"))
                 {
                     MoveList list = new();
-                    pos.AddAllMoves(ref list);
+                    pos.GenerateLegal(ref list);
                     Log(list.StringifyByType(pos.bb));
                 }
                 else if (cmd.EqualsIgnoreCase("perft"))
                 {
                     int depth = param.Length != 0 ? int.Parse(param[0]) : 2;
                     DoPerftDivide(depth);
+                }
+                else
+                {
+                    //  You can just copy paste in a FEN string rather than typing "position fen" before it.
+                    if (input.Where(x => x == '/').Count() == 8)
+                    {
+                        if (pos.LoadFromSFen(input.Trim()))
+                        {
+                            Log($"Loaded fen '{pos.GetSFen()}'");
+                        }
+                    }
+                    else
+                    {
+                        Log($"Unknown token '{input}'");
+                    }
                 }
             }
 
@@ -65,7 +80,7 @@
                 p.MakeMove(m);
                 ulong result = depth > 1 ? p.Perft(depth - 1) : 1;
                 p.UnmakeMove(m);
-                Log($"{m}: {result}");
+                Log($"{m}\t{result}");
                 total += result;
 
                 pos.bb.VerifyUnchangedFrom(temp);

@@ -25,6 +25,8 @@ namespace Peeper.Logic.Data
             Buffer[Size++].Move = m;
         }
 
+        public void Resize(int newSize) => Size = newSize;
+
         public Span<ScoredMove> ToSpan()
         {
             fixed (ScoredMove* buff = &Buffer[0])
@@ -44,7 +46,7 @@ namespace Peeper.Logic.Data
 
             for (int type = 0; type < PieceNB; type++)
             {
-                int n = ToSpan().ToArray().Count(x => bb.GetPieceAtIndex(x.Move.From) == type);
+                int n = ToSpan().ToArray().Count(x => !x.Move.IsDrop && bb.GetPieceAtIndex(x.Move.From) == type);
                 if (n == 0)
                     continue;
 
@@ -63,6 +65,22 @@ namespace Peeper.Logic.Data
 
                 sb.AppendLine();
             }
+
+            int drops = ToSpan().ToArray().Count(x => x.Move.IsDrop);
+            if (drops != 0)
+            {
+                sb.AppendLine($"Drops == {drops}");
+
+                for (int i = 0; i < Size; i++)
+                {
+                    Move m = Buffer[i].Move;
+                    if (!m.IsDrop)
+                        continue;
+
+                    sb.Append($"{m} ");
+                }
+            }
+
             return sb.ToString();
         }
     }

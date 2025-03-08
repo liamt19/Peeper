@@ -37,6 +37,8 @@ namespace Peeper.Logic.Data
         public const int PieceNB = 14;
         public const int PromotionNB = 6;
 
+        public static ReadOnlySpan<int> DroppableTypes => [Pawn, Lance, Knight, Silver, Bishop, Rook, Gold];
+
         public static bool IsPromoted(int type) => type >= PawnPromoted && type <= RookPromoted;
         public static bool CanPromote(int type) => (type <= Rook);
         public static int Promote(int type)
@@ -184,5 +186,6 @@ namespace Peeper.Logic.Data
         public const int A1 = 80;
 
         public const int SquareNB = 81;
+        public const int DropSourceSquare = 82;
     }
 }

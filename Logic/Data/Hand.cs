@@ -11,7 +11,7 @@ namespace Peeper.Logic.Data
         private const int LanceShift  =  4;
         private const int KnightShift =  8;
         private const int SilverShift = 12;
-        private const int BishopShift = 26;
+        private const int BishopShift = 16;
         private const int RookShift   = 20;
         private const int GoldShift   = 24;
 

@@ -117,7 +117,12 @@ namespace Peeper.Logic.Data
                     int maskOffset = colOffset + sq;
 
                     LanceMasks[maskOffset] = ForwardRays[maskOffset];
-                    KnightMasks[maskOffset] = SquareBB(sq + up + up + West) | SquareBB(sq + up + up + East);
+
+                    if (GetIndexFile(sq) != File9)
+                        KnightMasks[maskOffset] |= SquareBB(sq + up + up + East);
+
+                    if (GetIndexFile(sq) != File1)
+                        KnightMasks[maskOffset] |= SquareBB(sq + up + up + West);
                 }
             }
         }

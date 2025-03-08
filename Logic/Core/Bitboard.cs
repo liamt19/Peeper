@@ -152,8 +152,8 @@ namespace Peeper.Logic.Core
             v |= (Pieces[Bishop] & GetBishopMoves(sq, occ));
             v |= (Pieces[Rook] & GetRookMoves(sq, occ));
 
-            v |= (GoldMoveMask(Black, sq) & (Pieces[PawnPromoted] | Pieces[LancePromoted] | Pieces[KnightPromoted] | Pieces[SilverPromoted]) & Colors[White]);
-            v |= (GoldMoveMask(White, sq) & (Pieces[PawnPromoted] | Pieces[LancePromoted] | Pieces[KnightPromoted] | Pieces[SilverPromoted]) & Colors[Black]);
+            v |= (GoldMoveMask(Black, sq) & (Pieces[PawnPromoted] | Pieces[LancePromoted] | Pieces[KnightPromoted] | Pieces[SilverPromoted] | Pieces[Gold]) & Colors[White]);
+            v |= (GoldMoveMask(White, sq) & (Pieces[PawnPromoted] | Pieces[LancePromoted] | Pieces[KnightPromoted] | Pieces[SilverPromoted] | Pieces[Gold]) & Colors[Black]);
 
             v |= (KingMoveMask(sq) & (Pieces[BishopPromoted] | Pieces[RookPromoted]));
 

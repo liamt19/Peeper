@@ -17,7 +17,7 @@ namespace Peeper.Logic.Core
         public BoardState* NextState => (State + 1);
         private BoardState* _stateBlock;
 
-        public bool Checked => State->Checkers != 0;
+        public bool InCheck => State->Checkers != 0;
 
         public int ToMove;
         public int MoveNumber;
@@ -94,6 +94,10 @@ namespace Peeper.Logic.Core
             {
                 bb.RemovePiece(ourColor, ourPiece, moveFrom);
             }
+            else
+            {
+                State->Hands[ourColor].TakeFromHand(move.DroppedPiece);
+            }
 
             if (theirPiece != None)
             {
@@ -151,7 +155,48 @@ namespace Peeper.Logic.Core
 
         public bool IsLegal(Move move, int ourKing, int theirKing, Bitmask pinnedPieces)
         {
-            return true;
+            var (moveFrom, moveTo) = move.Unpack();
+            int pt = bb.GetPieceAtIndex(moveFrom);
+
+            if (pt == None)
+            {
+                return false;
+            }
+
+            int ourColor = bb.GetColorAtIndex(moveFrom);
+            int theirColor = Not(ourColor);
+
+            if (InCheck)
+            {
+                //  We have 3 Options: block the check, take the piece giving check, or move our king out of it.
+                if (pt == Piece.King)
+                {
+                    //  We need to move to a square that they don't attack.
+                    //  We also need to consider (NeighborsMask[moveTo] & SquareBB[theirKing]), because bb.AttackersTo does NOT include king attacks
+                    //  and we can't move to a square that their king attacks.
+                    return ((bb.AttackersTo(moveTo, bb.Occupancy ^ SquareBB(moveFrom)) & bb.Colors[theirColor]) | (KingMoveMask(moveTo) & SquareBB(theirKing))) == 0;
+                }
+
+                int checker = LSB(State->Checkers);
+                if ((Line(ourKing, checker) & SquareBB(moveTo)) != 0)
+                {
+                    //  This move is another piece which has moved into the LineBB between our king and the checking piece.
+                    //  This will be legal as long as it isn't pinned.
+
+                    return pinnedPieces == 0 || (pinnedPieces & SquareBB(moveFrom)) == 0;
+                }
+
+                //  This isn't a king move and doesn't get us out of check, so it's illegal.
+                return false;
+            }
+
+            if (pt == Piece.King)
+            {
+                //  We can move anywhere as long as it isn't attacked by them.
+                return ((bb.AttackersTo(moveTo, bb.Occupancy ^ SquareBB(ourKing)) & bb.Colors[theirColor]) | (KingMoveMask(moveTo) & SquareBB(theirKing))) == 0;
+            }
+        
+            return (!State->BlockingPieces[ourColor].HasBit(moveFrom) || Ray(moveFrom, moveTo).HasBit(ourKing));
         }
 
         [MethodImpl(Inline)]
@@ -199,9 +244,12 @@ namespace Peeper.Logic.Core
         }
 
 
-        public void LoadFromSFen(string sfen)
+        public bool LoadFromSFen(string sfen)
         {
             bb.Clear();
+            State->Hands[Black].Clear();
+            State->Hands[White].Clear();
+
             MoveNumber = 1;
 
             var fields = sfen.Split(' ');
@@ -252,6 +300,8 @@ namespace Peeper.Logic.Core
 
             var f = GetSFen();
             Assert(f == sfen, $"Loaded: {sfen}\n   Got: {f}");
+
+            return true;
         }
 
         public string GetSFen()
@@ -313,7 +363,15 @@ namespace Peeper.Logic.Core
 
         public override string ToString()
         {
-            return $"{bb}\r\n";
+            StringBuilder sb = new StringBuilder();
+
+            sb.AppendLine(bb.ToString());
+
+            sb.AppendLine($"\r\nBlack hand: {State->Hands[Black].ToString(Black)}");
+            sb.AppendLine($"White hand: {State->Hands[White].ToString(White)}");
+            sb.AppendLine($"\r\n{ColorToString(ToMove)} to move");
+
+            return sb.ToString();
         }
     }
 }

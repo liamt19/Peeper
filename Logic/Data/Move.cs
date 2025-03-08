@@ -13,18 +13,19 @@ namespace Peeper.Logic.Data
         public uint GetData() => _data;
 
         private const int Mask_ToFrom = 0xFFFF;
-        private const int DropShift = 16;
+        private const int DropShift = 18;
         private const int PromoShift = 24;
 
         public const int FlagPromotion = 0b1 << PromoShift;
 
-        private const int FlagDrop = 0b1000 << DropShift;
-        public const int FlagDropPawn   = (Piece.Pawn) << DropShift;
-        public const int FlagDropLance  = (Piece.Lance) << DropShift;
-        public const int FlagDropKnight = (Piece.Knight) << DropShift;
-        public const int FlagDropSilver = (Piece.Silver) << DropShift;
-        public const int FlagDropBishop = (Piece.Bishop) << DropShift;
-        public const int FlagDropRook   = (Piece.Rook) << DropShift;
+        private const int FlagDrop = 0b10000 << DropShift;
+        public const int FlagDropPawn   = FlagDrop | ((Piece.Pawn) << DropShift);
+        public const int FlagDropLance  = FlagDrop | ((Piece.Lance) << DropShift);
+        public const int FlagDropKnight = FlagDrop | ((Piece.Knight) << DropShift);
+        public const int FlagDropSilver = FlagDrop | ((Piece.Silver) << DropShift);
+        public const int FlagDropBishop = FlagDrop | ((Piece.Bishop) << DropShift);
+        public const int FlagDropRook   = FlagDrop | ((Piece.Rook) << DropShift);
+        public const int FlagDropGold   = FlagDrop | ((Piece.Gold) << DropShift);
 
         public readonly int From => (int)((_data >> 0) & 0b1111111);
         public readonly int To => (int)((_data >> 8) & 0b1111111);
@@ -32,7 +33,7 @@ namespace Peeper.Logic.Data
         public (int from, int to) Unpack() => (From, To);
 
         public readonly bool IsDrop => (_data & FlagDrop) != 0;
-        public readonly int DroppedPiece => (int)((_data >> DropShift) & 0b111);
+        public readonly int DroppedPiece => (int)((_data >> DropShift) & 0b1111);
 
         public readonly bool IsPromotion => (_data & FlagPromotion) != 0;
 
@@ -58,6 +59,19 @@ namespace Peeper.Logic.Data
         [MethodImpl(Inline)]
         public bool Equals(ScoredMove move) => move.Move.Equals(this);
 
+        public static int DropFlagFor(int type)
+        {
+            return type switch
+            {
+                Pawn => FlagDropPawn,
+                Lance => FlagDropLance,
+                Knight => FlagDropKnight,
+                Silver => FlagDropSilver,
+                Bishop => FlagDropBishop,
+                Rook => FlagDropRook,
+                Gold => FlagDropGold,
+            };
+        }
 
         public static bool operator ==(Move left, Move right) => left.Equals(right);
         public static bool operator !=(Move left, Move right) => !left.Equals(right);

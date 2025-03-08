@@ -15,7 +15,7 @@ namespace Peeper.Logic.Util
     {
         public const MethodImplOptions Inline = MethodImplOptions.AggressiveInlining;
 
-        public const int MoveListSize = 600;
+        public const int MoveListSize = 800;
 
         public static readonly Bitmask AllMask = new(0x1ffff, 0xffffffffffffffff);
         public static readonly Bitmask EmptyMask = new();
@@ -43,7 +43,7 @@ namespace Peeper.Logic.Util
         public static readonly Bitmask WhitePromotionSquares = new(0, 0x7FFFFFF);
 
         public const string InitialFEN = @"lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1";
-
+        public const string DropsFEN = @"4k4/9/9/9/9/9/9/9/4K4 b RBGSNLP 1";
 
 
         public static void Log(string s)
@@ -72,10 +72,10 @@ namespace Peeper.Logic.Util
         {
             return type switch
             {
-                Pawn or Lance when color is Black => RankI_Mask,
-                Pawn or Lance when color is White => RankA_Mask,
-                Knight when color is Black => (RankH_Mask | RankI_Mask),
-                Knight when color is White => (RankA_Mask | RankB_Mask),
+                Pawn or Lance when color is Black => RankA_Mask,
+                Pawn or Lance when color is White => RankI_Mask,
+                Knight when color is Black => (RankA_Mask | RankB_Mask),
+                Knight when color is White => (RankH_Mask | RankI_Mask),
                 _ => 0
             };
         }

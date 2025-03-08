@@ -76,6 +76,21 @@ namespace Peeper.Logic.Core
             int stm = ToMove;
             var occ = bb.Occupancy;
 
+            ref Hand ourHand = ref State->Hands[stm];
+            foreach (var type in Piece.DroppableTypes)
+            {
+                int n = ourHand.NumHeld(type);
+                if (n == 0)
+                    continue;
+
+                var dropFlag = Move.DropFlagFor(type);
+                var dropMask = AllMask & ~(occ | ForcedPromotionSquares(stm, type));
+                while (dropMask != 0)
+                {
+                    int to = PopLSB(&dropMask);
+                    list.AddMove(new(DropSourceSquare, to, dropFlag));
+                }
+            }
         }
 
         public void AddAllMoves(ref MoveList list)
@@ -99,19 +114,22 @@ namespace Peeper.Logic.Core
             AddAllMoves(ref list);
 
             int curr = 0;
-            int end = list.Size - 1;
+            int end = list.Size;
 
             while (curr < end)
             {
                 if (!IsLegal(list[curr].Move))
                 {
-                    list[curr] = list[--end];
+                    end--;
+                    list[curr] = list[end];
                 }
                 else
                 {
-                    ++curr;
+                    curr++;
                 }
             }
+
+            list.Resize(curr);
         }
     }
 }
