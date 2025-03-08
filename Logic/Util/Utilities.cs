@@ -235,15 +235,16 @@ namespace Peeper.Logic.Util
         public static bool HasBit(this Bitmask b, int sq) => (b & SquareBB(sq)) != Bitmask.Zero;
 
 
-        public static ReadOnlySpan<char> FileNames => ['i', 'h', 'g', 'f', 'e', 'd', 'c', 'b', 'a'];
         public static string PrintBoard(Bitboard bb)
         {
             StringBuilder sb = new StringBuilder();
             sb.Append("\r\n");
 
+            char[] fileNames = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i'];
+
             sb.AppendLine($"   {string.Join(" |  ", Enumerable.Range(1, 9).Reverse())}  ");
             sb.AppendLine($"+----+----+----+----+----+----+----+----+----+");
-            for (int y = 8; y >= 0; y--)
+            for (int y = 0; y < 9; y++)
             {
                 sb.Append("|");
                 for (int x = 0; x < 9; x++)
@@ -266,7 +267,7 @@ namespace Peeper.Logic.Util
 
                     sb.Append(" |");
                 }
-                sb.Append($" {char.ToUpper(FileNames[y])}");
+                sb.Append($" {char.ToUpper(fileNames[y])}");
 
                 sb.AppendLine();
                 sb.AppendLine("+----+----+----+----+----+----+----+----+----+  ");

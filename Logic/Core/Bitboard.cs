@@ -33,7 +33,7 @@ namespace Peeper.Logic.Core
         public int GetColorAtIndex(int sq)
         {
             Assert(Mailbox[sq] != None, $"GetColorAtIndex({sq}) Called on an empty square!");
-            return (Colors[Black] & SquareBB(sq)) != 0 ? White : Black;
+            return (Colors[Black] & SquareBB(sq)) != 0 ? Black : White;
         }
 
         [MethodImpl(Inline)]
