@@ -15,7 +15,7 @@ namespace Peeper.Logic.Util
     {
         public const MethodImplOptions Inline = MethodImplOptions.AggressiveInlining;
 
-        public const int MoveListSize = 800;
+        public const int MoveListSize = 600;
 
         public static readonly Bitmask AllMask = new(0x1ffff, 0xffffffffffffffff);
         public static readonly Bitmask EmptyMask = new();

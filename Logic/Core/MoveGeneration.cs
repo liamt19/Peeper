@@ -15,13 +15,12 @@ namespace Peeper.Logic.Core
             var us = bb.Colors[stm];
 
             Bitmask ourPawns = bb.Pieces[Pawn] & us;
-            var emptySquares = ~bb.Occupancy;
 
-            //Bitmask forcePromoMask = (stm == Black ? RankI_Mask : RankA_Mask);
+            var promoSquares = (stm == Black ? BlackPromotionSquares : WhitePromotionSquares);
             Bitmask forcePromoMask = ForcedPromotionSquares(stm, Pawn);
 
-            var normalPushes = ourPawns.Shift(up) & emptySquares;
-            var promotions = normalPushes & (stm == Black ? BlackPromotionSquares : WhitePromotionSquares);
+            var normalPushes = ourPawns.Shift(up) & ~us;
+            var promotions = normalPushes & promoSquares;
 
             normalPushes &= ~forcePromoMask;
             while (normalPushes != 0)
@@ -40,6 +39,8 @@ namespace Peeper.Logic.Core
         public void AddNormalMoves(ref MoveList list, int type)
         {
             int stm = ToMove;
+
+            var promoSquares = (stm == Black ? BlackPromotionSquares : WhitePromotionSquares);
             var forcePromoMask = ForcedPromotionSquares(stm, type);
             bool doPromos = Piece.CanPromote(type);
 
@@ -51,7 +52,11 @@ namespace Peeper.Logic.Core
             {
                 int sq = PopLSB(&ourPieces);
                 var moves = bb.GetPieceAttacks(stm, type, sq, occ) & ~us;
-                var promos = moves & (stm == Black ? BlackPromotionSquares : WhitePromotionSquares);
+                var promos = moves & promoSquares;
+                if (promoSquares.HasBit(sq))
+                {
+                    promos = moves;
+                }
 
                 moves &= ~forcePromoMask;
                 while (moves != 0)
@@ -103,13 +108,20 @@ namespace Peeper.Logic.Core
             AddNormalMoves(ref list, Bishop);
             AddNormalMoves(ref list, Rook);
 
+            AddNormalMoves(ref list, PawnPromoted);
+            AddNormalMoves(ref list, LancePromoted);
+            AddNormalMoves(ref list, KnightPromoted);
+            AddNormalMoves(ref list, SilverPromoted);
+            AddNormalMoves(ref list, BishopPromoted);
+            AddNormalMoves(ref list, RookPromoted);
+
             AddNormalMoves(ref list, Gold);
             AddNormalMoves(ref list, King);
 
             AddDropMoves(ref list);
         }
 
-        public void GenerateLegal(ref MoveList list)
+        public int GenerateLegal(ref MoveList list)
         {
             AddAllMoves(ref list);
 
@@ -130,6 +142,7 @@ namespace Peeper.Logic.Core
             }
 
             list.Resize(curr);
+            return list.Size;
         }
     }
 }

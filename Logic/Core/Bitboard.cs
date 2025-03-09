@@ -3,6 +3,7 @@ using Peeper.Logic.Util;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Text;
 
@@ -49,6 +50,7 @@ namespace Peeper.Logic.Core
             return LSB(Colors[pc] & Pieces[Piece.King]);
         }
 
+        [MethodImpl(Inline)]
         public void AddPiece(int color, int type, int sq)
         {
             Assert(!Pieces[type].HasBit(sq), $"AddPiece({color}, {type}, {sq}) Piece was already set!");
@@ -60,6 +62,7 @@ namespace Peeper.Logic.Core
             Mailbox[sq] = type;
         }
 
+        [MethodImpl(Inline)]
         public void RemovePiece(int color, int type, int sq)
         {
             Assert(Pieces[type].HasBit(sq), $"RemovePiece({color}, {type}, {sq}) Piece was not set!");
@@ -89,7 +92,10 @@ namespace Peeper.Logic.Core
 
             int ourKing = KingIndex(pc);
 
-            Bitmask candidates = them & ((RookRay(ourKing) & Pieces[Rook]) | (BishopRay(ourKing) & Pieces[Bishop]) | (LanceRay(Not(pc), ourKing) & Pieces[Lance]));
+            Bitmask candidates = them & (
+                (RookRay(ourKing) & (Pieces[Rook] | Pieces[RookPromoted])) | 
+                (BishopRay(ourKing) & (Pieces[Bishop] | Pieces[BishopPromoted])) | 
+                (LanceRay(pc, ourKing) & Pieces[Lance]));
 
             var occ = us | them;
 
@@ -97,7 +103,7 @@ namespace Peeper.Logic.Core
             {
                 int idx = PopLSB(&candidates);
 
-                temp = Line(ourKing, idx) & occ;
+                temp = Between(ourKing, idx) & occ;
 
                 if (temp != 0 && !MoreThanOne(temp))
                 {
@@ -127,9 +133,18 @@ namespace Peeper.Logic.Core
                 Silver => SilverMoveMask(color, sq),
                 Bishop => GetBishopMoves(sq, occ),
                 Rook   => GetRookMoves(sq, occ),
-                Gold   => GoldMoveMask(color, sq),
                 King   => KingMoveMask(sq),
-                _      => 0
+
+                PawnPromoted or 
+                LancePromoted or 
+                KnightPromoted or 
+                SilverPromoted or 
+                Gold    => GoldMoveMask(color, sq),
+
+                RookPromoted   => KingMoveMask(sq) | GetRookMoves(sq, occ),
+                BishopPromoted => KingMoveMask(sq) | GetBishopMoves(sq, occ),
+
+                _ => 0
             };
         }
 
@@ -149,8 +164,8 @@ namespace Peeper.Logic.Core
             v |= (Pieces[Silver] & SilverMoveMask(Black, sq) & Colors[White]);
             v |= (Pieces[Silver] & SilverMoveMask(White, sq) & Colors[Black]);
 
-            v |= (Pieces[Bishop] & GetBishopMoves(sq, occ));
-            v |= (Pieces[Rook] & GetRookMoves(sq, occ));
+            v |= ((Pieces[Bishop] | Pieces[BishopPromoted]) & GetBishopMoves(sq, occ));
+            v |= ((Pieces[Rook] | Pieces[RookPromoted]) & GetRookMoves(sq, occ));
 
             v |= (GoldMoveMask(Black, sq) & (Pieces[PawnPromoted] | Pieces[LancePromoted] | Pieces[KnightPromoted] | Pieces[SilverPromoted] | Pieces[Gold]) & Colors[White]);
             v |= (GoldMoveMask(White, sq) & (Pieces[PawnPromoted] | Pieces[LancePromoted] | Pieces[KnightPromoted] | Pieces[SilverPromoted] | Pieces[Gold]) & Colors[Black]);
@@ -174,6 +189,8 @@ namespace Peeper.Logic.Core
             return cpy;
         }
 
+        [Conditional("DEBUG")]
+        [Conditional("RELEASE_CHECKED")]
         public void VerifyUnchangedFrom(Bitboard other)
         {
             for (int i = 0; i < PieceNB; i++) 
@@ -186,6 +203,8 @@ namespace Peeper.Logic.Core
                 Assert(Mailbox[i] == other.Mailbox[i]);
         }
 
+        [Conditional("DEBUG")]
+        [Conditional("RELEASE_CHECKED")]
         public void VerifyOK()
         {
             Assert((White & Black) == 0);

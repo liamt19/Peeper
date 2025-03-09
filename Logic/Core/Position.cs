@@ -1,4 +1,7 @@
-﻿using Peeper.Logic.Data;
+﻿
+#define BULK
+
+using Peeper.Logic.Data;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -43,8 +46,7 @@ namespace Peeper.Logic.Core
         public bool TryMakeMove(string moveStr)
         {
             MoveList list = new();
-            GenerateLegal(ref list);
-            int size = list.Size;
+            int size = GenerateLegal(ref list);
             for (int i = 0; i < size; i++)
             {
                 Move m = list[i].Move;
@@ -102,6 +104,7 @@ namespace Peeper.Logic.Core
             if (theirPiece != None)
             {
                 bb.RemovePiece(theirColor, theirPiece, moveTo);
+                State->Hands[ourColor].AddToHand(IsPromoted(theirPiece) ? Demote(theirPiece) : theirPiece);
             }
 
             int typeToAdd = move.IsPromotion ? Piece.Promote(ourPiece)
@@ -153,6 +156,7 @@ namespace Peeper.Logic.Core
         [MethodImpl(Inline)]
         public bool IsLegal(in Move move) => IsLegal(move, State->KingSquares[ToMove], State->KingSquares[Not(ToMove)], State->BlockingPieces[ToMove]);
 
+        [MethodImpl(Inline)]
         public bool IsLegal(Move move, int ourKing, int theirKing, Bitmask pinnedPieces)
         {
             var (moveFrom, moveTo) = move.Unpack();
@@ -163,8 +167,18 @@ namespace Peeper.Logic.Core
                 return false;
             }
 
-            int ourColor = bb.GetColorAtIndex(moveFrom);
+            int ourColor = ToMove;
             int theirColor = Not(ourColor);
+
+            if (move.IsDrop && move.DroppedPiece == Pawn)
+            {
+                var fileMask = GetFileBB(GetIndexFile(moveTo));
+                if ((fileMask & bb.Pieces[Pawn] & bb.Colors[ourColor]) != 0)
+                {
+                    //  nifu
+                    return false;
+                }
+            }
 
             if (InCheck)
             {
@@ -205,39 +219,84 @@ namespace Peeper.Logic.Core
             State->KingSquares[Black] = bb.KingIndex(Black);
             State->KingSquares[White] = bb.KingIndex(White);
 
-            State->Checkers = bb.AttackersTo(State->KingSquares[ToMove], bb.Occupancy) & bb.Colors[Not(ToMove)];
             UpdateState();
         }
 
         [MethodImpl(Inline)]
         public void UpdateState()
         {
-            State->BlockingPieces[White] = bb.BlockingPieces(White, &State->Pinners[Black]);
             State->BlockingPieces[Black] = bb.BlockingPieces(Black, &State->Pinners[White]);
+            State->BlockingPieces[White] = bb.BlockingPieces(White, &State->Pinners[Black]);
+
+            State->Checkers = bb.AttackersTo(State->KingSquares[ToMove], bb.Occupancy) & bb.Colors[Not(ToMove)];
         }
 
         public ulong Perft(int depth)
         {
+#if !BULK
             if (depth == 0)
             {
                 return 1;
             }
+#endif
 
             MoveList list = new();
-            GenerateLegal(ref list);
+            int size = GenerateLegal(ref list);
+
+#if BULK
+            if (depth == 1)
+            {
+                return (ulong)size;
+            }
+#endif
 
             ulong n = 0;
-            for (int i = 0; i < list.Size; i++)
+            for (int i = 0; i < size; i++)
             {
                 Move m = list[i].Move;
-
-                Bitboard temp = bb.DebugClone();
-
                 MakeMove(m);
                 n += Perft(depth - 1);
                 UnmakeMove(m);
+            }
+            return n;
+        }
 
-                bb.VerifyUnchangedFrom(temp);
+
+        private readonly Stopwatch PerftTimer = new Stopwatch();
+        public ulong PerftParallel(int depth, bool isRoot = false)
+        {
+            const int PerftParallelMinDepth = 5;
+
+            if (isRoot)
+            {
+                PerftTimer.Restart();
+            }
+
+            MoveList mlist = new();
+            int size = GenerateLegal(ref mlist);
+            var list = mlist.ToSpicyPointer();
+
+            ulong n = 0;
+
+            string rootFEN = GetSFen();
+            Parallel.For(0, size, new ParallelOptions { MaxDegreeOfParallelism = size }, i =>
+            {
+                Position threadPosition = new Position(rootFEN);
+
+                threadPosition.MakeMove(list[i].Move);
+                ulong result = (depth >= PerftParallelMinDepth) ? threadPosition.PerftParallel(depth - 1) : threadPosition.Perft(depth - 1);
+                if (isRoot)
+                {
+                    Log($"{list[i].Move}\t{result}");
+                }
+                n += result;
+            });
+
+            if (isRoot)
+            {
+                PerftTimer.Stop();
+                Log($"\r\nNodes searched: {n} in {PerftTimer.Elapsed.TotalSeconds} s ({(int)(n / PerftTimer.Elapsed.TotalSeconds):N0} nps)\r\n");
+                PerftTimer.Reset();
             }
 
             return n;
@@ -261,11 +320,11 @@ namespace Peeper.Logic.Core
                 int rank = splitN;
                 int file = -1;
 
+                bool isPromoted = false;
                 foreach (char c in rankStr)
                 {
                     file++;
 
-                    bool isPromoted = false;
                     if (char.IsDigit(c))
                     {
                         file += (int.Parse(c.ToString()) - 1);
@@ -275,6 +334,7 @@ namespace Peeper.Logic.Core
                     if (c == '+')
                     {
                         isPromoted = true;
+                        file--;
                         continue;
                     }
 
@@ -297,9 +357,6 @@ namespace Peeper.Logic.Core
             MoveNumber = int.Parse(fields[3]);
 
             SetState();
-
-            var f = GetSFen();
-            Assert(f == sfen, $"Loaded: {sfen}\n   Got: {f}");
 
             return true;
         }
@@ -356,7 +413,7 @@ namespace Peeper.Logic.Core
                 sb.Append(State->Hands[White].ToString(White));
             }
 
-                sb.Append($" {MoveNumber}");
+            sb.Append($" {MoveNumber}");
 
             return sb.ToString();
         }

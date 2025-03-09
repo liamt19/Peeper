@@ -80,6 +80,7 @@ namespace Peeper.Logic.Data
                 }
 
                 SetNumHeld(SFenToPiece(c), n);
+                n = 1;
             }
         }
 
@@ -123,11 +124,11 @@ namespace Peeper.Logic.Data
             StringBuilder sb = new StringBuilder();
 
             //  pieces are always listed in the order rook, bishop, gold, silver, knight, lance, pawn
-            int[] order = [Rook, Bishop, Gold, Silver, Knight, Lance, Pawn];
+            int[] order = [Pawn, Lance, Knight, Silver, Bishop, Gold, Rook];
             foreach (int type in order)
             {
                 int n = NumHeld(type);
-                char c = PieceToSFenChar(type);
+                char c = PieceToSFenChar(color, type);
 
                 if (n > 1)
                 {

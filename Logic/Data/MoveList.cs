@@ -33,6 +33,12 @@ namespace Peeper.Logic.Data
                 return new Span<ScoredMove>(buff, Size);
         }
 
+        public ScoredMove* ToSpicyPointer()
+        {
+            fixed (ScoredMove* buff = &Buffer[0])
+                return buff;
+        }
+
         public override string ToString()
         {
             return $"{Size}: {Stringify(ToSpan())}";
@@ -57,7 +63,7 @@ namespace Peeper.Logic.Data
                     Move m = Buffer[i].Move;
                     var (from, _) = m.Unpack();
 
-                    if (bb.GetPieceAtIndex(from) == type)
+                    if (!m.IsDrop && bb.GetPieceAtIndex(from) == type)
                     {
                         sb.Append($"{m} ");
                     }

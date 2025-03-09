@@ -1,4 +1,7 @@
-﻿using Peeper.Logic.Data;
+﻿
+#pragma warning disable CS8500 // This takes the address of, gets the size of, or declares a pointer to a managed type
+
+using Peeper.Logic.Data;
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
@@ -26,7 +29,7 @@ namespace Peeper.Logic.Util
 
         public static int PopLSB(Bitmask* value)
         {
-            int sq = (int)Bitmask.TrailingZeroCount(*value);
+            int sq = LSB(*value);
             *value = *value & *value - 1;
             return sq;
         }

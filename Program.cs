@@ -28,14 +28,19 @@
                 }
                 else if(cmd.EqualsIgnoreCase("list"))
                 {
-                    MoveList list = new();
-                    pos.GenerateLegal(ref list);
-                    Log(list.StringifyByType(pos.bb));
+                    DoListMoves();
+                }
+                else if (cmd.EqualsIgnoreCase("b"))
+                {
+                    DoBenchPerft();
                 }
                 else if (cmd.EqualsIgnoreCase("perft"))
                 {
-                    int depth = param.Length != 0 ? int.Parse(param[0]) : 2;
-                    DoPerftDivide(depth);
+                    DoPerftDivide(int.Parse(param[0]));
+                }
+                else if (cmd.EqualsIgnoreCase("perftp"))
+                {
+                    pos.PerftParallel(int.Parse(param[0]), true);
                 }
                 else
                 {
@@ -54,7 +59,6 @@
                 }
             }
 
-            Console.ReadLine();
         }
 
 
@@ -65,29 +69,52 @@
             ulong total = 0;
 
             Position p = new Position(pos.GetSFen());
-
             Stopwatch sw = Stopwatch.StartNew();
 
             MoveList list = new();
-            p.GenerateLegal(ref list);
-            int size = list.Size;
+            int size = p.GenerateLegal(ref list);
             for (int i = 0; i < size; i++)
             {
                 Move m = list[i].Move;
-
-                Bitboard temp = pos.bb.DebugClone();
-
                 p.MakeMove(m);
                 ulong result = depth > 1 ? p.Perft(depth - 1) : 1;
                 p.UnmakeMove(m);
                 Log($"{m}\t{result}");
                 total += result;
-
-                pos.bb.VerifyUnchangedFrom(temp);
             }
             sw.Stop();
-
             Log($"\r\nNodes searched: {total} in {sw.Elapsed.TotalSeconds} s ({(int)(total / sw.Elapsed.TotalSeconds):N0} nps)\r\n");
+        }
+
+        private static void DoBenchPerft()
+        {
+            foreach (var (sfen, depthData) in PerftData.PerftPositions)
+            {
+                pos.LoadFromSFen(sfen);
+                Log($"{sfen}");
+
+                int maxD = Math.Min(depthData.Length, 5);
+                for (int depth = 1; depth < maxD; depth++)
+                {
+                    var correctNodes = depthData[depth];
+                    ulong ourNodes = pos.Perft(depth);
+                    if (ourNodes != depthData[depth])
+                    {
+                        Log($"{depth}\t{ourNodes} should be {correctNodes}");
+                    }
+                    else
+                    {
+                        Log($"{depth}\t{ourNodes} correct");
+                    }
+                }
+            }
+        }
+
+        private static void DoListMoves()
+        {
+            MoveList list = new();
+            pos.GenerateLegal(ref list);
+            Log(list.StringifyByType(pos.bb));
         }
     }
 }
