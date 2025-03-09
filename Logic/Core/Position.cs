@@ -178,6 +178,32 @@ namespace Peeper.Logic.Core
                     //  nifu
                     return false;
                 }
+
+                if (PawnMoveMask(ourColor, moveTo).HasBit(theirKing))
+                {
+                    var mask = bb.AttackersTo(moveTo, bb.Occupancy);
+                    bool isDefended = (mask & bb.Colors[ourColor]) != 0;
+                    var nonPinnedAttackers = mask & bb.Colors[theirColor] & ~State->BlockingPieces[theirColor];
+                    if (isDefended && nonPinnedAttackers == 0)
+                    {
+                        //  If the pawn is defended, and there aren't any attackers able to capture it,
+                        //  this will be uchifuzume unless their king has at least 1 safe square to move into
+                        var kingRing = KingMoveMask(theirKing) & ~bb.Colors[theirColor] & ~KingMoveMask(ourKing);
+                        bool canEscape = false;
+                        while (kingRing != 0)
+                        {
+                            int escapeSquare = PopLSB(&kingRing);
+                            if ((bb.AttackersTo(escapeSquare, bb.Occupancy | SquareBB(moveTo)) & bb.Colors[ourColor]) == 0)
+                            {
+                                canEscape = true;
+                                break;
+                            }
+                        }
+
+                        if (!canEscape)
+                            return false;
+                    }
+                }
             }
 
             if (InCheck)
