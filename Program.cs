@@ -1,4 +1,6 @@
-﻿namespace Peeper
+﻿using Peeper.Logic.Search;
+
+namespace Peeper
 {
     public static unsafe class Program
     {
@@ -34,6 +36,10 @@
                 {
                     DoBenchPerft();
                 }
+                else if (cmd.StartsWithIgnoreCase("go"))
+                {
+                    HandleGoCommand(param);
+                }
                 else if (cmd.EqualsIgnoreCase("perft"))
                 {
                     DoPerftDivide(int.Parse(param[0]));
@@ -61,6 +67,21 @@
 
         }
 
+
+        private static void HandleGoCommand(string[] param)
+        {
+            int depth = 5;
+            for (int i = 0; i < param.Length; i++)
+            {
+                if (param[i] == "depth")
+                {
+                    depth = int.Parse(param[i + 1]);
+                    i++;
+                }
+            }
+
+            Searches.StartSearch(pos, depth);
+        }
 
         private static void DoPerftDivide(int depth)
         {

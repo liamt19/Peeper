@@ -144,5 +144,11 @@ namespace Peeper.Logic.Core
             list.Resize(curr);
             return list.Size;
         }
+
+        public int GeneratePseudoLegal(ref MoveList list)
+        {
+            AddAllMoves(ref list);
+            return list.Size;
+        }
     }
 }

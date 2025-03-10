@@ -1,13 +1,7 @@
-﻿using Peeper.Logic.Core;
-using Peeper.Logic.Data;
-using System;
-using System.Collections.Generic;
+﻿
 using System.Diagnostics;
-using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
-using System.Threading.Tasks;
-using static System.Net.Mime.MediaTypeNames;
 
 namespace Peeper.Logic.Util
 {
@@ -16,6 +10,11 @@ namespace Peeper.Logic.Util
         public const MethodImplOptions Inline = MethodImplOptions.AggressiveInlining;
 
         public const int MoveListSize = 600;
+
+        public const int MaxPly = 256;
+        public const int MaxDepth = 255;
+
+        public const int MaxSearchStackPly = MaxPly - 10;
 
         public static readonly Bitmask AllMask = new(0x1ffff, 0xffffffffffffffff);
         public static readonly Bitmask EmptyMask = new();

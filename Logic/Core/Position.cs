@@ -288,10 +288,10 @@ namespace Peeper.Logic.Core
         }
 
 
-        private readonly Stopwatch PerftTimer = new Stopwatch();
+        private static readonly Stopwatch PerftTimer = new Stopwatch();
         public ulong PerftParallel(int depth, bool isRoot = false)
         {
-            const int PerftParallelMinDepth = 5;
+            const int MinRecursiveDepth = 6;
 
             if (isRoot)
             {
@@ -305,12 +305,12 @@ namespace Peeper.Logic.Core
             ulong n = 0;
 
             string rootFEN = GetSFen();
-            Parallel.For(0, size, new ParallelOptions { MaxDegreeOfParallelism = size }, i =>
+            Parallel.For(0, size, new ParallelOptions { MaxDegreeOfParallelism = Math.Max(1, size) }, i =>
             {
                 Position threadPosition = new Position(rootFEN);
 
                 threadPosition.MakeMove(list[i].Move);
-                ulong result = (depth >= PerftParallelMinDepth) ? threadPosition.PerftParallel(depth - 1) : threadPosition.Perft(depth - 1);
+                ulong result = (depth > MinRecursiveDepth) ? threadPosition.PerftParallel(depth - 1) : threadPosition.Perft(depth - 1);
                 if (isRoot)
                 {
                     Log($"{list[i].Move}\t{result}");

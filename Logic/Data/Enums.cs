@@ -101,6 +101,13 @@ namespace Peeper.Logic.Data
         public const int SouthSouth = South + South;
     }
 
+
+    public interface SearchNodeType { }
+    public struct PVNode : SearchNodeType { }
+    public struct NonPVNode : SearchNodeType { }
+    public struct RootNode : SearchNodeType { }
+
+
     public static class Squares
     {
         public const int I9 = 0;
