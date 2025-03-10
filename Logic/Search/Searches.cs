@@ -1,4 +1,5 @@
 ﻿
+using System.Text;
 using System.Xml.Linq;
 using static Peeper.Logic.Evaluation.MaterialCounting;
 
@@ -7,6 +8,23 @@ namespace Peeper.Logic.Search
     public static unsafe class Searches
     {
         public static ulong Nodes = 0;
+        public static Move[] PVAtHome = new Move[MaxPly];
+
+        private static string GetPV()
+        {
+            StringBuilder sb = new StringBuilder();
+            foreach (var move in PVAtHome.Skip(1))
+            {
+                if (move.IsNull())
+                    break;
+
+                sb.Insert(0, move.ToString());
+                sb.Insert(0, ' ');
+            }
+            sb.Remove(0, 1);
+            return sb.ToString();
+        }
+
 
         public static void StartSearch(Position pos, int maxDepth)
         {
@@ -18,6 +36,8 @@ namespace Peeper.Logic.Search
                 (ss + i)->Ply = (short)i;
                 (ss + i)->PV = AlignedAllocZeroed<Move>(MaxPly);
             }
+
+            Array.Clear(PVAtHome);
 
             Stopwatch sw = Stopwatch.StartNew();
             Nodes = 0;
@@ -33,7 +53,8 @@ namespace Peeper.Logic.Search
 
                 var time = Math.Max(1, Math.Round(sw.Elapsed.TotalMilliseconds));
                 var nps = (ulong)((double)Nodes / (time / 1000));
-                Log($"info depth {depth} time {time} score cp {score} nodes {Nodes} nps {nps}");
+                var pv = GetPV();
+                Log($"info depth {depth} time {time} score cp {score} nodes {Nodes} nps {nps} pv {pv}");
             }
         }
 
@@ -121,6 +142,7 @@ namespace Peeper.Logic.Search
                             UpdatePV(ss->PV, m, (ss + 1)->PV);
                         }
 #endif
+                        PVAtHome[depth] = m;
 
                         if (score >= beta)
                         {
