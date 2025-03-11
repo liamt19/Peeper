@@ -1,5 +1,6 @@
 ﻿
 using Peeper.Logic.Data;
+using Peeper.Logic.Evaluation;
 using Peeper.Logic.Search.History;
 using Peeper.Logic.Threads;
 using Peeper.Logic.Transposition;
@@ -61,6 +62,8 @@ namespace Peeper.Logic.Search
             {
                 thisThread.SelDepth = Math.Max(thisThread.SelDepth, ss->Ply + 1);
             }
+
+            thisThread.Nodes++;
 
             if (!isRoot)
             {
@@ -124,7 +127,6 @@ namespace Peeper.Logic.Search
 
                 ss->CurrentMove = m;
                 ss->ContinuationHistory = history.Continuations[0][0][0, 0, 0];
-                thisThread.Nodes++;
 
                 pos.MakeMove(m);
 
@@ -221,7 +223,12 @@ namespace Peeper.Logic.Search
 
         public static int QSearch(Position pos, SearchStack* ss, int alpha, int beta)
         {
-            return GetMaterial(pos);
+            SearchThread thisThread = pos.Owner;
+            TranspositionTable TT = thisThread.TT;
+
+            thisThread.Nodes++;
+
+            return NNUE.GetEvaluation(pos);
         }
 
         private static void AppendToPV(Move* pv, Move move, Move* childPV)

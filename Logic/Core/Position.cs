@@ -4,6 +4,7 @@
 #define BULK
 
 using Peeper.Logic.Data;
+using Peeper.Logic.Evaluation;
 using Peeper.Logic.Threads;
 using System;
 using System.Collections.Generic;
@@ -22,7 +23,8 @@ namespace Peeper.Logic.Core
         public Bitboard bb;
 
         public BoardState* State;
-        private BoardState* _stateBlock;
+        private readonly BoardState* _stateBlock;
+        private readonly Accumulator* _accumulatorBlock;
 
         public int ToMove;
         public int MoveNumber;
@@ -37,8 +39,17 @@ namespace Peeper.Logic.Core
 
             bb = new Bitboard();
 
-            _stateBlock = AlignedAllocZeroed<BoardState>(3072);
-            State = _stateBlock;
+            State = _stateBlock = AlignedAllocZeroed<BoardState>(BoardState.StateStackSize);
+
+            if (UpdateNN)
+            {
+                _accumulatorBlock = AlignedAllocZeroed<Accumulator>(BoardState.StateStackSize);
+                for (int i = 0; i < BoardState.StateStackSize; i++)
+                {
+                    (StartingState + i)->Accumulator = &_accumulatorBlock[i];
+                    *(StartingState + i)->Accumulator = new Accumulator();
+                }
+            }
 
             if (UpdateNN && Owner == null)
             {
@@ -53,10 +64,23 @@ namespace Peeper.Logic.Core
 
         ~Position()
         {
+            if (UpdateNN)
+            {
+                //  Free each accumulator, then the block
+                for (int i = 0; i < BoardState.StateStackSize; i++)
+                {
+                    var acc = *(StartingState + i)->Accumulator;
+                    acc.Dispose();
+                }
+
+                NativeMemory.AlignedFree(_accumulatorBlock);
+            }
+
             NativeMemory.AlignedFree(_stateBlock);
         }
 
 
+        public BoardState* StartingState => _stateBlock;
         public BoardState* NextState => (State + 1);
         public bool InCheck => State->Checkers != 0;
 
@@ -100,7 +124,7 @@ namespace Peeper.Logic.Core
 
         public void MakeMove(Move move)
         {
-            Unsafe.CopyBlock(NextState, State, (uint)sizeof(BoardState));
+            Unsafe.CopyBlock(NextState, State, BoardState.StateCopySize);
             State++;
             MoveNumber++;
 
@@ -424,6 +448,11 @@ namespace Peeper.Logic.Core
             MoveNumber = int.Parse(fields[3]);
 
             SetState();
+
+            if (UpdateNN)
+            {
+                NNUE.RefreshAccumulator(this);
+            }
 
             return true;
         }
