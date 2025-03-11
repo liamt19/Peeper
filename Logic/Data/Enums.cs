@@ -36,6 +36,7 @@ namespace Peeper.Logic.Data
         public const int None = 14;
         public const int PieceNB = 14;
         public const int PromotionNB = 6;
+        public const int HandPieceNB = 7;
 
         public static ReadOnlySpan<int> DroppableTypes => [Pawn, Lance, Knight, Silver, Bishop, Rook, Gold];
 
@@ -107,6 +108,19 @@ namespace Peeper.Logic.Data
     public struct NonPVNode : SearchNodeType { }
     public struct RootNode : SearchNodeType { }
 
+    public enum TTNodeType
+    {
+        Invalid,
+        /// <summary>
+        /// Upper Bound
+        /// </summary>
+        Beta,
+        /// <summary>
+        /// Lower bound
+        /// </summary>
+        Alpha,
+        Exact = Beta | Alpha
+    };
 
     public static class Squares
     {
