@@ -1,5 +1,10 @@
 ﻿
+using Peeper.Logic.Data;
+using Peeper.Logic.Search.History;
+using Peeper.Logic.Threads;
+using Peeper.Logic.Transposition;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using static Peeper.Logic.Evaluation.MaterialCounting;
 
@@ -7,57 +12,6 @@ namespace Peeper.Logic.Search
 {
     public static unsafe class Searches
     {
-        public static ulong Nodes = 0;
-        public static Move[] PVAtHome = new Move[MaxPly];
-
-        private static string GetPV()
-        {
-            StringBuilder sb = new StringBuilder();
-            foreach (var move in PVAtHome.Skip(1))
-            {
-                if (move.IsNull())
-                    break;
-
-                sb.Insert(0, move.ToString());
-                sb.Insert(0, ' ');
-            }
-            sb.Remove(0, 1);
-            return sb.ToString();
-        }
-
-
-        public static void StartSearch(Position pos, int maxDepth)
-        {
-            SearchStack* _ss = stackalloc SearchStack[MaxPly];
-            SearchStack* ss = _ss + 10;
-            for (int i = -10; i < MaxSearchStackPly; i++)
-            {
-                (ss + i)->Clear();
-                (ss + i)->Ply = (short)i;
-                (ss + i)->PV = AlignedAllocZeroed<Move>(MaxPly);
-            }
-
-            Array.Clear(PVAtHome);
-
-            Stopwatch sw = Stopwatch.StartNew();
-            Nodes = 0;
-
-            int score;
-            int depth = 0;
-            while (depth++ < maxDepth)
-            {
-                int alpha = -ScoreMate;
-                int beta = ScoreMate;
-
-                score = Negamax<RootNode>(pos, ss, alpha, beta, depth);
-
-                var time = Math.Max(1, Math.Round(sw.Elapsed.TotalMilliseconds));
-                var nps = (ulong)((double)Nodes / (time / 1000));
-                var pv = GetPV();
-                Log($"info depth {depth} time {time} score cp {score} nodes {Nodes} nps {nps} pv {pv}");
-            }
-        }
-
 
         public static int Negamax<NodeType>(Position pos, SearchStack* ss, int alpha, int beta, int depth) where NodeType : SearchNodeType
         {
@@ -69,13 +23,92 @@ namespace Peeper.Logic.Search
                 return QSearch(pos, ss, alpha, beta);
             }
 
+            SearchThread thisThread = pos.Owner;
+            TranspositionTable TT = thisThread.TT;
+
+            ref HistoryTable history = ref thisThread.History;
+            ref Bitboard bb = ref pos.bb;
+
+            int us = pos.ToMove;
+
+            Move bestMove = Move.Null;
+
             int score = -ScoreInfinite;
             int bestScore = -ScoreInfinite;
-            Move bestMove = Move.Null;
+
+            short eval = ss->StaticEval;
+
+            if (thisThread.IsMain)
+            {
+                bool check = (thisThread.Nodes & 1023) == 1023;
+                if (check)
+                {
+                    //  If we are out of time, stop now.
+                    if (TimeManager.CheckHardTime())
+                    {
+                        thisThread.AssocPool.StopThreads = true;
+                    }
+                }
+
+                if ((SearchOptions.Threads == 1 && thisThread.Nodes >= thisThread.AssocPool.SharedInfo.HardNodeLimit) ||
+                    (check && thisThread.AssocPool.GetNodeCount() >= thisThread.AssocPool.SharedInfo.HardNodeLimit))
+                {
+                    thisThread.AssocPool.StopThreads = true;
+                }
+            }
+
+            if (isPV)
+            {
+                thisThread.SelDepth = Math.Max(thisThread.SelDepth, ss->Ply + 1);
+            }
+
+            if (!isRoot)
+            {
+                if (pos.IsDraw())
+                {
+                    return MakeDrawScore(thisThread.Nodes);
+                }
+
+                if (thisThread.AssocPool.StopThreads || ss->Ply >= MaxSearchStackPly - 1)
+                {
+                    return pos.InCheck ? ScoreDraw : GetMaterial(pos);
+                }
+
+#if NO
+                alpha = Math.Max(MakeMateScore(ss->Ply), alpha);
+                beta = Math.Min(ScoreMate - (ss->Ply + 1), beta);
+                if (alpha >= beta)
+                {
+                    return alpha;
+                }
+#endif
+            }
+
+            ss->InCheck = pos.InCheck;
+
+
+            if (ss->InCheck)
+            {
+                //  If we are in check, don't bother getting a static evaluation or pruning.
+                ss->StaticEval = eval = ScoreNone;
+                goto MovesLoop;
+            }
+
+
+        MovesLoop:
+
+            int legalMoves = 0;     //  Number of legal moves that have been encountered so far in the loop.
+            int playedMoves = 0;    //  Number of moves that have been MakeMove'd so far.
 
             MoveList list = new();
             int size = pos.GeneratePseudoLegal(ref list);
             MoveOrdering.AssignScores(pos, ref list);
+
+            MoveList unsorted = new();
+            for (int i = 0; i < list.Size; i++)
+            {
+                unsorted.Buffer[i] = list[i];
+            }
 
             for (int i = 0; i < size; i++)
             {
@@ -86,17 +119,41 @@ namespace Peeper.Logic.Search
                     continue;
                 }
 
-                int newDepth = depth - 1;
+                legalMoves++;
+                var (moveFrom, moveTo) = m.Unpack();
+
+                ss->CurrentMove = m;
+                ss->ContinuationHistory = history.Continuations[0][0][0, 0, 0];
+                thisThread.Nodes++;
 
                 pos.MakeMove(m);
-                Nodes++;
+
+                playedMoves++;
+                ulong prevNodes = thisThread.Nodes;
+
+                if (isPV)
+                    System.Runtime.InteropServices.NativeMemory.Clear((ss + 1)->PV, (nuint)(MaxPly * sizeof(Move)));
+
+                int newDepth = depth - 1;
+
                 score = -Negamax<NonPVNode>(pos, ss + 1, -beta, -alpha, newDepth);
+                
                 pos.UnmakeMove(m);
 
-#if NO
                 if (isRoot)
                 {
-                    int rmIndex = 0;
+                    //  Update the NodeTM table with the number of nodes that were searched in this subtree.
+                    thisThread.NodeTable[moveFrom][moveTo] += thisThread.Nodes - prevNodes;
+                }
+
+                if (thisThread.AssocPool.StopThreads)
+                {
+                    return ScoreDraw;
+                }
+
+                if (isRoot)
+                {
+                    int rmIndex = -1;
                     for (int j = 0; j < thisThread.RootMoves.Count; j++)
                     {
                         if (thisThread.RootMoves[j].Move == m)
@@ -105,6 +162,8 @@ namespace Peeper.Logic.Search
                             break;
                         }
                     }
+
+                    Assert(rmIndex != -1);
 
                     RootMove rm = thisThread.RootMoves[rmIndex];
                     rm.AverageScore = (rm.AverageScore == -ScoreInfinite) ? score : ((rm.AverageScore + (score * 2)) / 3);
@@ -126,7 +185,6 @@ namespace Peeper.Logic.Search
                         rm.Score = -ScoreInfinite;
                     }
                 }
-#endif
 
                 if (score > bestScore)
                 {
@@ -136,13 +194,10 @@ namespace Peeper.Logic.Search
                     {
                         bestMove = m;
 
-#if NO
                         if (isPV && !isRoot)
                         {
-                            UpdatePV(ss->PV, m, (ss + 1)->PV);
+                            AppendToPV(ss->PV, m, (ss + 1)->PV);
                         }
-#endif
-                        PVAtHome[depth] = m;
 
                         if (score >= beta)
                         {
@@ -155,12 +210,27 @@ namespace Peeper.Logic.Search
 
             }
 
+            if (legalMoves == 0)
+            {
+                Assert(!isRoot);
+                return MakeMateScore(ss->Ply);
+            }
+
             return bestScore;
         }
 
         public static int QSearch(Position pos, SearchStack* ss, int alpha, int beta)
         {
             return GetMaterial(pos);
+        }
+
+        private static void AppendToPV(Move* pv, Move move, Move* childPV)
+        {
+            for (*pv++ = move; childPV != null && *childPV != Move.Null;)
+            {
+                *pv++ = *childPV++;
+            }
+            *pv = Move.Null;
         }
     }
 }

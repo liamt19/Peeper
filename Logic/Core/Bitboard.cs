@@ -101,9 +101,9 @@ namespace Peeper.Logic.Core
 
             while (candidates != 0)
             {
-                int idx = PopLSB(&candidates);
+                int sq = PopLSB(&candidates);
 
-                temp = Between(ourKing, idx) & occ;
+                temp = Between(ourKing, sq) & occ;
 
                 if (temp != 0 && !MoreThanOne(temp))
                 {
@@ -112,8 +112,8 @@ namespace Peeper.Logic.Core
 
                     if ((temp & us) != 0)
                     {
-                        //  If the blocker is ours, then the candidate on the square "idx" is a pinner
-                        *pinners |= SquareBB(idx);
+                        //  If the blocker is ours, then the candidate on the square "sq" is a pinner
+                        *pinners |= SquareBB(sq);
                     }
                 }
             }

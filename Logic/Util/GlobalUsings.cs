@@ -12,10 +12,15 @@ global using static Peeper.Logic.Data.Files;
 global using static Peeper.Logic.Data.Precomputed;
 global using static Peeper.Logic.Data.Squares;
 global using static Peeper.Logic.Magic.MagicBitboards;
+global using static Peeper.Logic.Search.SearchOptions;
 global using static Peeper.Logic.Search.SearchConstants;
+global using static Peeper.Logic.Threads.SearchThreadPool;
 global using static Peeper.Logic.Util.Interop;
 global using static Peeper.Logic.Util.Utilities;
 global using static Peeper.Logic.Util.ExceptionHandling;
+
+global using static Peeper.Logic.Protocols.Formatting;
+
 
 global using Color = Peeper.Logic.Data.Color;
 global using Stopwatch = System.Diagnostics.Stopwatch;

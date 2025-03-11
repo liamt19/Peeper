@@ -41,7 +41,7 @@ namespace Peeper.Logic.Data
 
         public override string ToString()
         {
-            return $"{Size}: {Stringify(ToSpan())}";
+            return $"{Size}: {Stringify(ToSpan(), Size)}";
         }
 
         public string StringifyByType(Bitboard bb)

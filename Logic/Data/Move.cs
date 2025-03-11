@@ -2,6 +2,8 @@
 #pragma warning disable CS0660 // Type defines operator == or operator != but does not override Object.Equals(object o)
 #pragma warning disable CS0661 // Type defines operator == or operator != but does not override Object.GetHashCode()
 
+using Peeper.Logic.Protocols;
+using Peeper.Logic.USI;
 using System.Runtime.CompilerServices;
 using System.Text;
 
@@ -10,11 +12,11 @@ namespace Peeper.Logic.Data
     public readonly struct Move(int from, int to, int flags = 0)
     {
         public static readonly Move Null = new Move();
+        public static Move MakeDrop(int type, int sq) => new(DropSourceSquare, sq, DropFlagFor(type));
+        public static Move MakePromo(int from, int to) => new(from, to, Move.FlagPromotion);
+        public static Move MakeNormal(int from, int to) => new(from, to);
 
-        private readonly uint _data = (uint)((from << 0) | (to << 8) | flags);
-
-        [MethodImpl(Inline)]
-        public uint GetData() => _data;
+        public readonly uint Data { get; } = (uint)((from << 0) | (to << 8) | flags);
 
         private const int Mask_ToFrom = 0xFFFF;
         private const int DropShift = 18;
@@ -31,33 +33,33 @@ namespace Peeper.Logic.Data
         public const int FlagDropRook   = FlagDrop | ((Piece.Rook) << DropShift);
         public const int FlagDropGold   = FlagDrop | ((Piece.Gold) << DropShift);
 
-        public readonly int From => (int)((_data >> 0) & 0b1111111);
-        public readonly int To => (int)((_data >> 8) & 0b1111111);
+        public readonly int From => (int)((Data >> 0) & 0b1111111);
+        public readonly int To => (int)((Data >> 8) & 0b1111111);
 
         public (int from, int to) Unpack() => (From, To);
 
-        public readonly bool IsDrop => (_data & FlagDrop) != 0;
-        public readonly int DroppedPiece => (int)((_data >> DropShift) & 0b1111);
+        public readonly bool IsDrop => (Data & FlagDrop) != 0;
+        public readonly int DroppedPiece => (int)((Data >> DropShift) & 0b1111);
 
-        public readonly bool IsPromotion => (_data & FlagPromotion) != 0;
+        public readonly bool IsPromotion => (Data & FlagPromotion) != 0;
 
         [MethodImpl(Inline)]
-        public readonly bool IsNull() => (_data & Mask_ToFrom) == 0;
+        public readonly bool IsNull() => (Data & Mask_ToFrom) == 0;
 
 
         public override string ToString()
         {
-            if (IsDrop)
-            {
-                return $"{PieceToSFenChar(DroppedPiece)}*{IndexToString(To)}";
-            }
+            return ActiveFormatter.FormatMove(this);
+        }
 
-            return $"{IndexToString(From)}{IndexToString(To)}{(IsPromotion ? "+" : "")}";
+        public static Move FromString(string str)
+        {
+            return ActiveFormatter.ParseMove(str);
         }
 
 
         [MethodImpl(Inline)]
-        public bool Equals(Move move) => move.GetData() == GetData();
+        public bool Equals(Move move) => move.Data == Data;
 
 
         [MethodImpl(Inline)]

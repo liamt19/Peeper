@@ -5,6 +5,8 @@ namespace Peeper.Logic.Data
 {
     public unsafe struct Hand
     {
+        public const int MaxHeld = 9;
+
         public int Data { get; private set; }
 
         private const int PawnShift   =  0;

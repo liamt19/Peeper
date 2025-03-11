@@ -1,4 +1,6 @@
 ﻿
+using Peeper.Logic.Search;
+using Peeper.Logic.Threads;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -9,6 +11,7 @@ namespace Peeper.Logic.Util
     {
         public const MethodImplOptions Inline = MethodImplOptions.AggressiveInlining;
 
+        public const string EngineBuildVersion = "0.0.1";
         public const int MoveListSize = 600;
 
         public const int MaxPly = 256;
@@ -41,6 +44,7 @@ namespace Peeper.Logic.Util
         public static readonly Bitmask BlackPromotionSquares = new(0x1FFFF, 0xFFC0000000000000);
         public static readonly Bitmask WhitePromotionSquares = new(0, 0x7FFFFFF);
 
+        public const string InitialFEN_UCI = @"lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL[-] w 3";
         public const string InitialFEN = @"lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1";
         public const string DropsFEN = @"4k4/9/9/9/9/9/9/9/4K4 b RBGSNLP 1";
 
@@ -125,6 +129,14 @@ namespace Peeper.Logic.Util
             int rankDistance = Math.Abs(GetIndexRank(sq) - GetIndexRank(sq + dir));
             int fileDistance = Math.Abs(GetIndexFile(sq) - GetIndexFile(sq + dir));
             return Math.Max(rankDistance, fileDistance) <= 2;
+        }
+
+        public static ulong NextUlong(this Random random)
+        {
+            Span<byte> arr = new byte[8];
+            random.NextBytes(arr);
+
+            return BitConverter.ToUInt64(arr);
         }
 
         public static string ColorToString(int color)
@@ -220,11 +232,24 @@ namespace Peeper.Logic.Util
         }
 
         public static string PieceToString(int color, int type) => $"{ColorToString(color)} {PieceToString(type)}";
-        public static string IndexToString(int sq) => $"{GetIndexFileName(sq)}{GetIndexRankName(sq)}";
+        public static string SquareToString(int sq) => $"{GetIndexFileName(sq)}{GetIndexRankName(sq)}";
 
         public static int GetIndexFileName(int sq) => 9 - sq % 9;
         public static char GetIndexRankName(int sq) => (char)('i' - sq / 9);
 
+        public static int StringToSquare(string str)
+        {
+            if (str.Length != 2)
+                return SquareNB;
+
+            if (str[0] < '1' || str[0] > '9' || str[1] < 'a' || str[1] > 'i')
+                return SquareNB;
+
+            int rank = 'a' + 8 - str[1];
+            int file = '1' + 8 - str[0];
+
+            return rank * 9 + file;
+        }
 
         public static bool HasBit(this Bitmask b, int sq) => (b & SquareBB(sq)) != Bitmask.Zero;
 
@@ -244,14 +269,14 @@ namespace Peeper.Logic.Util
                 for (int x = 0; x < 9; x++)
                 {
                     int sq = CoordToIndex(x, y);
-                    int pt = bb.GetPieceAtIndex(sq);
+                    int type = bb.GetPieceAtIndex(sq);
 
                     sb.Append(' ');
 
-                    if (pt != None)
+                    if (type != None)
                     {
                         int color = bb.GetColorAtIndex(sq);
-                        var c = PieceToSFen(color, pt);
+                        var c = PieceToSFen(color, type);
                         sb.Append(c.Length == 1 ? $" {c}" : c);
                     }
                     else
@@ -269,6 +294,7 @@ namespace Peeper.Logic.Util
 
             return sb.ToString();
         }
+
 
         public static void ForEach<T>(this IEnumerable<T> enumeration, Action<T> action)
         {
@@ -306,7 +332,7 @@ namespace Peeper.Logic.Util
             int loopMax = (listSize > 0) ? Math.Min(list.Length, listSize) : list.Length;
             for (int i = 0; i < loopMax; i++)
             {
-                if (list[i].Move.Equals(Move.Null))
+                if (listSize == 0 && list[i].Move.Equals(Move.Null))
                 {
                     break;
                 }
@@ -320,5 +346,204 @@ namespace Peeper.Logic.Util
             }
             return sb.ToString();
         }
+
+
+        public static void ParsePositionCommand(string[] input, Position pos, ThreadSetup setup)
+        {
+            //  Skip the "position fen" part, and slice until hitting the end of the input or "moves ..."
+            input = input.SkipWhile(x => x is "position" || x.EndsWith("fen")).ToArray();
+
+            string fen = string.Join(" ", input.TakeWhile(x => x != "moves"));
+
+            if (fen is "startpos")
+                fen = InitialFEN;
+
+            fen = ActiveFormatter.ParseSFen(fen);
+
+            setup.StartFEN = fen;
+            pos.LoadFromSFen(setup.StartFEN);
+
+            setup.SetupMoves.Clear();
+            var moves = input.SkipWhile(x => x != "moves").Skip(1).ToArray();
+
+            for (int i = 0; i < moves.Length; i++)
+            {
+                if (pos.TryFindMove(moves[i], out Move m))
+                    pos.MakeMove(m);
+
+                setup.SetupMoves.Add(m);
+            }
+        }
+
+
+        public static void ParseGoCommand(string[] param, ref SearchInformation info, ThreadSetup setup)
+        {
+            int stm = info.Position.ToMove;
+            var stmChar = stm == Black ? ActiveFormatter.GetGoBlackChar() : ActiveFormatter.GetGoWhiteChar();
+
+            info.SearchFinishedCalled = false;
+
+            TimeManager.Reset();
+
+            setup.UCISearchMoves = new List<Move>();
+
+            //  Assume that we can search infinitely, and let the parameters constrain us accordingly.
+            int movetime = MaximumSearchTime;
+            ulong nodeLimit = MaximumSearchNodes;
+            int depthLimit = MaxDepth;
+            int playerTime = 0;
+            int increment = 0;
+
+            for (int i = 0; i < param.Length - 1; i++)
+            {
+                if (param[i] == "movetime" && int.TryParse(param[i + 1], out int reqMovetime))
+                {
+                    movetime = reqMovetime;
+                }
+                else if (param[i] == "depth" && int.TryParse(param[i + 1], out int reqDepth))
+                {
+                    depthLimit = reqDepth;
+                }
+                else if (param[i] == "nodes" && ulong.TryParse(param[i + 1], out ulong reqNodes))
+                {
+                    nodeLimit = reqNodes;
+                }
+                else if (param[i].StartsWith(stmChar) && param[i].EndsWith("time") && int.TryParse(param[i + 1], out int reqPlayerTime))
+                {
+                    playerTime = reqPlayerTime;
+                }
+                else if (param[i].StartsWith(stmChar) && param[i].EndsWith("inc") && int.TryParse(param[i + 1], out int reqPlayerIncrement))
+                {
+                    increment = reqPlayerIncrement;
+                }
+                else if (param[i] == "searchmoves")
+                {
+                    i++;
+
+                    while (i <= param.Length - 1)
+                    {
+                        if (info.Position.TryFindMove(param[i], out Move m))
+                        {
+                            setup.UCISearchMoves.Add(m);
+                        }
+
+                        i++;
+                    }
+                }
+            }
+
+            info.DepthLimit = depthLimit;
+            info.HardNodeLimit = nodeLimit;
+
+            bool useSoftTM = param.Any(x => x.EndsWith("time") && x.StartsWith(stmChar)) && !param.Any(x => x == "movetime");
+            if (useSoftTM)
+            {
+                TimeManager.UpdateTimeLimits(playerTime, increment);
+            }
+            else
+            {
+                TimeManager.SetHardLimit(movetime);
+            }
+
+
+        }
+
+
+        public static void PrintSearchInfo(ref SearchInformation info)
+        {
+            SearchThread thisThread = info.Position.Owner;
+
+            List<RootMove> rootMoves = thisThread.RootMoves;
+            int multiPV = Math.Min(MultiPV, rootMoves.Count);
+
+            double time = Math.Max(1, Math.Round(TimeManager.GetSearchTime()));
+            ulong nodes = thisThread.AssocPool.GetNodeCount();
+            int nodesPerSec = (int)((double)nodes / (time / 1000));
+
+            int lastValidScore = 0;
+
+            for (int i = 0; i < multiPV; i++)
+            {
+                RootMove rm = rootMoves[i];
+                bool moveSearched = rm.Score != -ScoreInfinite;
+
+                int depth = moveSearched ? thisThread.RootDepth : Math.Max(1, thisThread.RootDepth - 1);
+                int moveScore = moveSearched ? rm.Score : rm.PreviousScore;
+
+                if (!moveSearched && i > 0)
+                {
+                    if (depth == 1)
+                    {
+                        continue;
+                    }
+
+                    if (moveScore == -ScoreInfinite)
+                    {
+                        moveScore = Math.Min(lastValidScore - 1, rm.AverageScore);
+                    }
+                }
+
+                if (moveScore != -ScoreInfinite)
+                {
+                    lastValidScore = moveScore;
+                }
+
+                var score = FormatMoveScore(moveScore);
+                var hashfull = thisThread.TT.GetHashFull();
+
+                Console.Write($"info depth {depth} seldepth {rm.Depth} multipv {i + 1} time {time} score {score} nodes {nodes} nps {nodesPerSec} hashfull {hashfull} pv");
+
+                for (int j = 0; j < MaxPly; j++)
+                {
+                    if (rm.PV[j] == Move.Null) break;
+
+                    string s = $" {rm.PV[j].ToString()}";
+                    Console.Write(s);
+                }
+
+                Console.WriteLine();
+            }
+        }
+
+        private static string FormatMoveScore(int score)
+        {
+            const int NormalizeEvalFactor = 100;
+
+            if (IsScoreMate(score))
+            {
+                return $"mate {ActiveFormatter.FormatMateDistance(score)}";
+            }
+
+            var ev = ((double)score * 100 / NormalizeEvalFactor);
+            return $"cp {(int)ev}";
+        }
+
+
+        public static void StableSort(List<RootMove> items, int offset = 0, int end = -1)
+        {
+            if (end == -1)
+            {
+                end = items.Count;
+            }
+
+            for (int i = offset; i < end; i++)
+            {
+                int best = i;
+
+                for (int j = i + 1; j < end; j++)
+                {
+                    if (items[j].CompareTo(items[best]) > 0)
+                    {
+                        best = j;
+                    }
+                }
+
+                if (best != i)
+                {
+                    (items[i], items[best]) = (items[best], items[i]);
+                }
+            }
+        }
+
     }
 }

@@ -5,26 +5,32 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <PublishAot>true</PublishAot>
     <InvariantGlobalization>true</InvariantGlobalization>
     <Platforms>x64</Platforms>
-    <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
 
+    <DebugType>embedded</DebugType>
+    <ProduceReferenceAssembly>False</ProduceReferenceAssembly>
+    <GenerateDocumentationFile>False</GenerateDocumentationFile>
+    <GenerateAssemblyInfo>True</GenerateAssemblyInfo>
+    <GenerateDependencyFile>False</GenerateDependencyFile>
+    
+    <BaseOutputPath>bin</BaseOutputPath>
+    <AppendTargetFrameworkToOutputPath>False</AppendTargetFrameworkToOutputPath>
+    <AppendRuntimeIdentifierToOutputPath>False</AppendRuntimeIdentifierToOutputPath>
+    
+    <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
+    <LangVersion>preview</LangVersion>
+    <EnablePreviewFeatures>True</EnablePreviewFeatures>
+
+    <PublishAot>true</PublishAot>
+    
     <TieredPGO>true</TieredPGO>
     <TieredCompilation>true</TieredCompilation>
     <PublishReadyToRun>true</PublishReadyToRun>
     <TieredCompilationQuickJit>true</TieredCompilationQuickJit>
     <TieredCompilationQuickJitForLoops>true</TieredCompilationQuickJitForLoops>
-    
-    
-  </PropertyGroup>
 
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <DebugType>embedded</DebugType>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <DebugType>embedded</DebugType>
+    
   </PropertyGroup>
 
 </Project>

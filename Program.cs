@@ -1,13 +1,30 @@
-﻿using Peeper.Logic.Search;
+﻿
+#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
+
+using Peeper.Logic.Search;
+using Peeper.Logic.Threads;
+using Peeper.Logic.USI;
+using System.Text;
 
 namespace Peeper
 {
     public static unsafe class Program
     {
         private static Position pos;
+        private static SearchInformation info;
         public static void Main(string[] args)
         {
-            pos = new Position();
+            pos = new Position(owner: GlobalSearchPool.MainThread);
+            info = new SearchInformation(pos);
+
+            InitializeAll();
+
+            DoInputLoop();
+        }
+
+        private static void DoInputLoop()
+        {
+            ThreadSetup setup = new ThreadSetup();
 
             while (true)
             {
@@ -20,25 +37,27 @@ namespace Peeper
                 string cmd = param[0];
                 param = param.Skip(1).ToArray();
 
-                if (cmd.EqualsIgnoreCase("d"))
+                if (cmd.EqualsIgnoreCase("usi"))
                 {
-                    Log(pos.ToString());
+                    SetUSIFormatter();
+                    USIClient.Run(pos);
                 }
-                else if (cmd.EqualsIgnoreCase("move"))
+                else if (cmd.EqualsIgnoreCase("uci"))
                 {
-                    pos.TryMakeMove(param[0]);
+                    SetUCIFormatter();
+                    USIClient.Run(pos);
                 }
-                else if(cmd.EqualsIgnoreCase("list"))
+                else if (cmd.EqualsIgnoreCase("position"))
                 {
-                    DoListMoves();
-                }
-                else if (cmd.EqualsIgnoreCase("b"))
-                {
-                    DoBenchPerft();
+                    HandlePositionCommand(param, setup);
                 }
                 else if (cmd.StartsWithIgnoreCase("go"))
                 {
-                    HandleGoCommand(param);
+                    HandleGoCommand(param, setup);
+                }
+                else if (cmd.EqualsIgnoreCase("stop"))
+                {
+                    GlobalSearchPool.StopThreads = true;
                 }
                 else if (cmd.EqualsIgnoreCase("perft"))
                 {
@@ -47,6 +66,22 @@ namespace Peeper
                 else if (cmd.EqualsIgnoreCase("perftp"))
                 {
                     pos.PerftParallel(int.Parse(param[0]), true);
+                }
+                else if (cmd.EqualsIgnoreCase("d"))
+                {
+                    Log(pos.ToString());
+                }
+                else if (cmd.EqualsIgnoreCase("move"))
+                {
+                    pos.TryMakeMove(param[0]);
+                }
+                else if (cmd.EqualsIgnoreCase("list"))
+                {
+                    DoListMoves();
+                }
+                else if (cmd.EqualsIgnoreCase("b"))
+                {
+                    DoBenchPerft();
                 }
                 else
                 {
@@ -64,24 +99,49 @@ namespace Peeper
                     }
                 }
             }
-
         }
 
-
-        private static void HandleGoCommand(string[] param)
+        public static void InitializeAll()
         {
-            int depth = 5;
-            for (int i = 0; i < param.Length; i++)
+            if (!System.Diagnostics.Debugger.IsAttached)
             {
-                if (param[i] == "depth")
-                {
-                    depth = int.Parse(param[i + 1]);
-                    i++;
-                }
+                AppDomain.CurrentDomain.UnhandledException += ExceptionHandling.CurrentDomain_UnhandledException;
             }
 
-            Searches.StartSearch(pos, depth);
+            Console.CancelKeyPress += delegate (object? sender, ConsoleCancelEventArgs e) {
+                if (!GlobalSearchPool.StopThreads)
+                {
+                    //  If a search is ongoing, stop it instead of closing the console.
+                    GlobalSearchPool.StopThreads = true;
+                    e.Cancel = true;
+                }
+
+                //  Otherwise, e.Cancel == false and the program exits normally
+            };
+
+            //  Quadruple the amount that Console.ReadLine() can handle.
+            Console.SetIn(new StreamReader(Console.OpenStandardInput(), Encoding.UTF8, false, 4096 * 4));
+
+            //  Give the VS debugger a friendly name for the main program thread
+            Thread.CurrentThread.Name = "MainThread";
         }
+
+
+        private static void HandleGoCommand(string[] param, ThreadSetup setup)
+        {
+            if (info.SearchActive)
+                return;
+
+            Utilities.ParseGoCommand(param, ref info, setup);
+            GlobalSearchPool.StartSearch(info.Position, ref info, setup);
+        }
+
+        private static void HandlePositionCommand(string[] param, ThreadSetup setup)
+        {
+            ParsePositionCommand(param, pos, setup);
+            Log($"Loaded fen '{pos.GetSFen()}'");
+        }
+
 
         private static void DoPerftDivide(int depth)
         {

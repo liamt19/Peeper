@@ -1,9 +1,14 @@
 ﻿
+#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
+
 #define BULK
 
 using Peeper.Logic.Data;
+using Peeper.Logic.Threads;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -17,33 +22,61 @@ namespace Peeper.Logic.Core
         public Bitboard bb;
 
         public BoardState* State;
-        public BoardState* NextState => (State + 1);
         private BoardState* _stateBlock;
-
-        public bool InCheck => State->Checkers != 0;
 
         public int ToMove;
         public int MoveNumber;
 
-        [MethodImpl(Inline)]
-        public bool IsCapture(Move m) => (bb.GetPieceAtIndex(m.To) != None);
+        public readonly SearchThread Owner;
+        private readonly bool UpdateNN;
 
-        public Position(string? fen = null)
+        public Position(string? fen = null, bool createAccumulators = true, SearchThread? owner = null)
         {
+            this.UpdateNN = createAccumulators;
+            this.Owner = owner;
+
             bb = new Bitboard();
 
             _stateBlock = AlignedAllocZeroed<BoardState>(3072);
             State = _stateBlock;
 
+            if (UpdateNN && Owner == null)
+            {
+                Debug.WriteLine($"info string Position('{fen}', {createAccumulators}, ...) has NNUE enabled and was given a nullptr for owner! " +
+                                $"Assigning this Position instance to the SearchPool's MainThread, UB and other weirdness may occur...");
+                Owner = GlobalSearchPool.MainThread;
+            }
+
             LoadFromSFen(fen ?? InitialFEN);
         }
+
 
         ~Position()
         {
             NativeMemory.AlignedFree(_stateBlock);
         }
 
+
+        public BoardState* NextState => (State + 1);
+        public bool InCheck => State->Checkers != 0;
+
+
+        [MethodImpl(Inline)]
+        public bool IsCapture(Move m) => (bb.GetPieceAtIndex(m.To) != None);
+
+
         public bool TryMakeMove(string moveStr)
+        {
+            if (TryFindMove(moveStr, out Move move))
+            {
+                MakeMove(move);
+                return true;
+            }
+
+            return false;
+        }
+
+        public bool TryFindMove(string moveStr, out Move move)
         {
             MoveList list = new();
             int size = GenerateLegal(ref list);
@@ -52,18 +85,18 @@ namespace Peeper.Logic.Core
                 Move m = list[i].Move;
                 if (m.ToString().ToLower().Equals(moveStr.ToLower()))
                 {
-                    MakeMove(m);
+                    move = m;
                     return true;
                 }
 
                 if (i == size - 1)
-                {
-                    Log($"No move '{moveStr}' found, try one of the following: ");
-                    Log($"{Stringify(list.ToSpan())}");
-                }
+                    Log($"No move '{moveStr}' found, try one of the following: \r\n{Stringify(list.ToSpan())}");
             }
+
+            move = Move.Null;
             return false;
         }
+
 
         public void MakeMove(Move move)
         {
@@ -82,7 +115,7 @@ namespace Peeper.Logic.Core
             Assert(ourPiece != None, $"Move {move} in '{GetSFen()}' doesn't have a piece on the From square!");
             Assert(theirPiece != King, $"Move {move} in '{GetSFen()}' captures a king!");
             Assert(theirPiece == None || ourColor != bb.GetColorAtIndex(moveTo), 
-                $"Move {move} in '{GetSFen()}' captures our own {PieceToString(theirPiece)} on {IndexToString(moveTo)}");
+                $"Move {move} in '{GetSFen()}' captures our own {PieceToString(theirPiece)} on {SquareToString(moveTo)}");
 
 
             if (ourPiece == King)
@@ -160,9 +193,9 @@ namespace Peeper.Logic.Core
         public bool IsLegal(Move move, int ourKing, int theirKing, Bitmask pinnedPieces)
         {
             var (moveFrom, moveTo) = move.Unpack();
-            int pt = bb.GetPieceAtIndex(moveFrom);
+            int type = bb.GetPieceAtIndex(moveFrom);
 
-            if (pt == None)
+            if (type == None)
             {
                 return false;
             }
@@ -209,7 +242,7 @@ namespace Peeper.Logic.Core
             if (InCheck)
             {
                 //  We have 3 Options: block the check, take the piece giving check, or move our king out of it.
-                if (pt == Piece.King)
+                if (type == Piece.King)
                 {
                     //  We need to move to a square that they don't attack.
                     //  We also need to consider (NeighborsMask[moveTo] & SquareBB[theirKing]), because bb.AttackersTo does NOT include king attacks
@@ -230,7 +263,7 @@ namespace Peeper.Logic.Core
                 return false;
             }
 
-            if (pt == Piece.King)
+            if (type == Piece.King)
             {
                 //  We can move anywhere as long as it isn't attacked by them.
                 return ((bb.AttackersTo(moveTo, bb.Occupancy ^ SquareBB(ourKing)) & bb.Colors[theirColor]) | (KingMoveMask(moveTo) & SquareBB(theirKing))) == 0;
@@ -256,6 +289,14 @@ namespace Peeper.Logic.Core
 
             State->Checkers = bb.AttackersTo(State->KingSquares[ToMove], bb.Occupancy) & bb.Colors[Not(ToMove)];
         }
+
+
+        public bool IsDraw()
+        {
+            return false;
+        }
+
+
 
         public ulong Perft(int depth)
         {
