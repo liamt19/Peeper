@@ -446,6 +446,8 @@ namespace Peeper.Logic.Core
             State->Hands[White].Clear();
 
             MoveNumber = 1;
+            State = StartingState;
+            NativeMemory.Clear(State, BoardState.StateCopySize);
 
             var fields = sfen.Split(' ');
 
