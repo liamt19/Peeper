@@ -15,6 +15,7 @@ namespace Peeper.Logic.Core
         public BitmaskBuffer2 Pinners;
         public Bitmask Checkers = 0;
         public HandBuffer Hands;
+        public ulong Hash;
         public fixed int KingSquares[2];
         public int CapturedPiece = None;
         public Accumulator* Accumulator;

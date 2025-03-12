@@ -7,6 +7,8 @@ using Peeper.Logic.Transposition;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
+
+using static Peeper.Logic.Transposition.TTEntry;
 using static Peeper.Logic.Evaluation.MaterialCounting;
 
 namespace Peeper.Logic.Search
@@ -37,7 +39,9 @@ namespace Peeper.Logic.Search
             int score = -ScoreInfinite;
             int bestScore = -ScoreInfinite;
 
+            const short rawEval = 0;
             short eval = ss->StaticEval;
+            int startingAlpha = alpha;
 
             if (thisThread.IsMain)
             {
@@ -88,6 +92,11 @@ namespace Peeper.Logic.Search
             }
 
             ss->InCheck = pos.InCheck;
+            ss->TTHit = TT.Probe(pos.Hash, out TTEntry* tte);
+            ss->TTPV = isPV || (ss->TTHit && tte->PV);
+
+            short ttScore = ss->TTHit ? MakeNormalScore(tte->Score, ss->Ply) : ScoreNone;
+            Move ttMove = isRoot ? thisThread.CurrentMove : (ss->TTHit ? tte->BestMove : Move.Null);
 
 
             if (ss->InCheck)
@@ -105,7 +114,7 @@ namespace Peeper.Logic.Search
 
             MoveList list = new();
             int size = pos.GeneratePseudoLegal(ref list);
-            MoveOrdering.AssignScores(pos, ref list);
+            MoveOrdering.AssignScores(pos, ref list, ttMove);
 
             for (int i = 0; i < size; i++)
             {
@@ -211,6 +220,14 @@ namespace Peeper.Logic.Search
                 Assert(!isRoot);
                 return MakeMateScore(ss->Ply);
             }
+
+            TTNodeType bound = (bestScore >= beta) ? TTNodeType.Alpha :
+                      ((bestScore > startingAlpha) ? TTNodeType.Exact :
+                                                     TTNodeType.Beta);
+
+            Move toSave = (bound == TTNodeType.Beta) ? Move.Null : bestMove;
+
+            tte->Update(pos.Hash, MakeTTScore((short)bestScore, ss->Ply), bound, depth, toSave, rawEval, TT.Age, ss->TTPV);
 
             return bestScore;
         }
