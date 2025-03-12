@@ -1,4 +1,5 @@
-﻿using System.Runtime.CompilerServices;
+﻿using System;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 namespace Peeper.Logic.Transposition
@@ -35,7 +36,8 @@ namespace Peeper.Logic.Transposition
 
             for (int type = Pawn; type < PieceNB; type++)
             {
-                for (int num = 0; num < Hand.MaxHeld; num++)
+                HandHashes[HandIndex(Black, type, 0)] = HandHashes[HandIndex(White, type, 0)] = 0;
+                for (int num = 1; num < Hand.MaxHeld; num++)
                 {
                     HandHashes[HandIndex(Black, type, num)] = rand.NextUlong();
                     HandHashes[HandIndex(White, type, num)] = rand.NextUlong();
@@ -45,9 +47,9 @@ namespace Peeper.Logic.Transposition
             BlackHash = rand.NextUlong();
         }
 
-        public static ulong GetHash(Position position)
+        public static ulong GetHash(Position pos)
         {
-            ref Bitboard bb = ref position.bb;
+            ref Bitboard bb = ref pos.bb;
 
             ulong hash = 0;
 
@@ -67,7 +69,20 @@ namespace Peeper.Logic.Transposition
                 hash ^= PSQHashes[PSQIndex(White, type, sq)];
             }
 
-            if (position.ToMove == Black)
+            for (int color = 0; color < ColorNB; color++)
+            {
+                var thisHand = pos.State->Hands[color];
+                if (thisHand.IsEmpty)
+                    continue;
+
+                foreach (var type in DroppableTypes)
+                {
+                    int num = thisHand.NumHeld(type);
+                    hash ^= HandHashes[HandIndex(color, type, num)];
+                }
+            }
+
+            if (pos.ToMove == Black)
             {
                 hash ^= BlackHash;
             }

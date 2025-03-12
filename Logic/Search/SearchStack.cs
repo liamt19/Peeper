@@ -14,6 +14,8 @@ namespace Peeper.Logic.Search
         public short Ply;
         public short StaticEval;
         public bool InCheck;
+        public bool TTHit;
+        public bool TTPV;
 
         public void Clear()
         {
@@ -30,7 +32,7 @@ namespace Peeper.Logic.Search
             Ply = 0;
             StaticEval = ScoreNone;
 
-            InCheck = false;
+            InCheck = TTHit = TTPV = false;
         }
     }
 }

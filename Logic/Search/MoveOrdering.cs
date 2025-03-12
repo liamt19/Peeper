@@ -5,7 +5,7 @@ namespace Peeper.Logic.Search
 {
     public static unsafe class MoveOrdering
     {
-        public static void AssignScores(Position pos, ref MoveList list)
+        public static void AssignScores(Position pos, ref MoveList list, Move ttMove)
         {
             ref Bitboard bb = ref pos.bb;
             int size = list.Size;
@@ -16,7 +16,11 @@ namespace Peeper.Logic.Search
                 Move m = sm.Move;
                 var (moveFrom, moveTo) = m.Unpack();
 
-                if (m.IsDrop)
+                if (m.Equals(ttMove))
+                {
+                    sm.Score = int.MaxValue - 1000000;
+                }
+                else if (m.IsDrop)
                 {
                     sm.Score += GetPieceValue(m.DroppedPiece);
                 }

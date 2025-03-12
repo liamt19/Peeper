@@ -6,6 +6,7 @@
 using Peeper.Logic.Data;
 using Peeper.Logic.Evaluation;
 using Peeper.Logic.Threads;
+using Peeper.Logic.Transposition;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -83,6 +84,7 @@ namespace Peeper.Logic.Core
         public BoardState* StartingState => _stateBlock;
         public BoardState* NextState => (State + 1);
         public bool InCheck => State->Checkers != 0;
+        public ulong Hash => State->Hash;
 
 
         [MethodImpl(Inline)]
@@ -136,7 +138,7 @@ namespace Peeper.Logic.Core
 
             var (moveFrom, moveTo) = move.Unpack();
 
-            var ourPiece = bb.GetPieceAtIndex(moveFrom);
+            var ourPiece = move.IsDrop ? move.DroppedPiece : bb.GetPieceAtIndex(moveFrom);
             var ourColor = ToMove;
 
             var theirPiece = bb.GetPieceAtIndex(moveTo);
@@ -155,27 +157,25 @@ namespace Peeper.Logic.Core
 
             State->CapturedPiece = theirPiece;
 
-            if (!move.IsDrop)
+            if (move.IsDrop)
             {
-                bb.RemovePiece(ourColor, ourPiece, moveFrom);
+                RemoveFromHand(ourColor, ourPiece);
             }
             else
             {
-                State->Hands[ourColor].TakeFromHand(move.DroppedPiece);
+                RemovePiece(ourColor, ourPiece, moveFrom);
             }
 
             if (theirPiece != None)
             {
-                bb.RemovePiece(theirColor, theirPiece, moveTo);
-                State->Hands[ourColor].AddToHand(DemoteMaybe(theirPiece));
+                RemovePiece(theirColor, theirPiece, moveTo);
+                AddToHand(ourColor, theirPiece);
             }
 
-            int typeToAdd = move.IsPromotion ? Piece.Promote(ourPiece)
-                          : move.IsDrop      ? move.DroppedPiece
-                          :                    ourPiece;
+            int typeToAdd = move.IsPromotion ? Piece.Promote(ourPiece) : ourPiece;
+            AddPiece(ourColor, typeToAdd, moveTo);
 
-            bb.AddPiece(ourColor, typeToAdd, moveTo);
-
+            State->Hash.ZobristChangeToMove();
             ToMove = Not(ToMove);
 
             State->Checkers = bb.AttackersTo(State->KingSquares[theirColor], bb.Occupancy) & bb.Colors[ourColor];
@@ -215,6 +215,42 @@ namespace Peeper.Logic.Core
             ToMove = Not(ToMove);
             bb.VerifyOK();
         }
+
+
+        [MethodImpl(Inline)]
+        private void UpdateHash(int color, int type, int sq)
+        {
+            State->Hash.ZobristToggleSquare(color, type, sq);
+        }
+
+        [MethodImpl(Inline)]
+        private void RemovePiece(int color, int type, int sq)
+        {
+            bb.RemovePiece(color, type, sq);
+            UpdateHash(color, type, sq);
+        }
+
+        [MethodImpl(Inline)]
+        private void AddPiece(int color, int type, int sq)
+        {
+            bb.AddPiece(color, type, sq);
+            UpdateHash(color, type, sq);
+        }
+
+        [MethodImpl(Inline)]
+        private void RemoveFromHand(int color, int type)
+        {
+            int newHeld = State->Hands[color].TakeFromHand(type);
+            State->Hash.ZobristUpdateHand(color, type, newHeld, newHeld + 1);
+        }
+
+        [MethodImpl(Inline)]
+        private void AddToHand(int color, int type)
+        {
+            int newHeld = State->Hands[color].AddToHand(DemoteMaybe(type));
+            State->Hash.ZobristUpdateHand(color, DemoteMaybe(type), newHeld - 1, newHeld);
+        }
+
 
         [MethodImpl(Inline)]
         public bool IsLegal(in Move move) => IsLegal(move, State->KingSquares[ToMove], State->KingSquares[Not(ToMove)], State->BlockingPieces[ToMove]);
@@ -302,11 +338,14 @@ namespace Peeper.Logic.Core
             return (!State->BlockingPieces[ourColor].HasBit(moveFrom) || Ray(moveFrom, moveTo).HasBit(ourKing));
         }
 
+
         [MethodImpl(Inline)]
         public void SetState()
         {
             State->KingSquares[Black] = bb.KingIndex(Black);
             State->KingSquares[White] = bb.KingIndex(White);
+
+            State->Hash = Zobrist.GetHash(this);
 
             UpdateState();
         }

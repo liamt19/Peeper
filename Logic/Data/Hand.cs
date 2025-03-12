@@ -47,17 +47,19 @@ namespace Peeper.Logic.Data
             Data = (Data & ~mask) | (n << shift);
         }
 
-        public void AddToHand(int type)
+        public int AddToHand(int type)
         {
             var n = NumHeld(type);
             SetNumHeld(type, n + 1);
+            return n + 1;
         }
 
-        public void TakeFromHand(int type)
+        public int TakeFromHand(int type)
         {
             var n = NumHeld(type);
             Assert(n > 0, $"TakeFromHand({type}) Type isn't in hand");
             SetNumHeld(type, n - 1);
+            return n - 1;
         }
 
         public void SetFromSFen(string handStr, int color)
