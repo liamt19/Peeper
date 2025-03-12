@@ -5,25 +5,25 @@ namespace Peeper.Logic.Data
 {
     public unsafe struct Hand
     {
-        public const int MaxHeld = 9;
+        public const int MaxHeld = 9 * ColorNB;
 
         public int Data { get; private set; }
 
-        private const int PawnShift   =  0;
-        private const int LanceShift  =  4;
-        private const int KnightShift =  8;
-        private const int SilverShift = 12;
-        private const int BishopShift = 16;
-        private const int RookShift   = 20;
-        private const int GoldShift   = 24;
+        private const int PawnShift   = 0;
+        private const int LanceShift  = PawnShift + 8;
+        private const int KnightShift = LanceShift + 4;
+        private const int SilverShift = KnightShift + 4;
+        private const int BishopShift = SilverShift + 4;
+        private const int RookShift   = BishopShift + 4;
+        private const int GoldShift   = RookShift + 4;
 
-        private const int PawnMask   = 0b1111 << PawnShift;
-        private const int LanceMask  = 0b1111 << LanceShift;
-        private const int KnightMask = 0b1111 << KnightShift;
-        private const int SilverMask = 0b1111 << SilverShift;
-        private const int BishopMask = 0b1111 << BishopShift;
-        private const int RookMask   = 0b1111 << RookShift;
-        private const int GoldMask   = 0b1111 << GoldShift;
+        private const int PawnMask   = 0b11111 << PawnShift;
+        private const int LanceMask  = 0b01111 << LanceShift;
+        private const int KnightMask = 0b01111 << KnightShift;
+        private const int SilverMask = 0b01111 << SilverShift;
+        private const int BishopMask = 0b01111 << BishopShift;
+        private const int RookMask   = 0b01111 << RookShift;
+        private const int GoldMask   = 0b01111 << GoldShift;
 
         public Hand()
         {
@@ -125,7 +125,6 @@ namespace Peeper.Logic.Data
         {
             StringBuilder sb = new StringBuilder();
 
-            //  pieces are always listed in the order rook, bishop, gold, silver, knight, lance, pawn
             int[] order = [Pawn, Lance, Knight, Silver, Bishop, Gold, Rook];
             foreach (int type in order)
             {

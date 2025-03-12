@@ -1,6 +1,7 @@
 ﻿
 #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
 
+using Peeper.Logic.Evaluation;
 using Peeper.Logic.Search;
 using Peeper.Logic.Threads;
 using Peeper.Logic.USI;
@@ -14,6 +15,12 @@ namespace Peeper
         private static SearchInformation info;
         public static void Main(string[] args)
         {
+            if (args.Length != 0 && args[0] == "bench")
+            {
+                SearchBench.Go(openBench: true);
+                Environment.Exit(0);
+            }
+
             pos = new Position(owner: GlobalSearchPool.MainThread);
             info = new SearchInformation(pos);
 
@@ -70,6 +77,11 @@ namespace Peeper
                 else if (cmd.EqualsIgnoreCase("d"))
                 {
                     Log(pos.ToString());
+                    DoEvaluate();
+                }
+                else if (cmd.EqualsIgnoreCase("eval"))
+                {
+                    DoEvaluate();
                 }
                 else if (cmd.EqualsIgnoreCase("move"))
                 {
@@ -79,9 +91,9 @@ namespace Peeper
                 {
                     DoListMoves();
                 }
-                else if (cmd.EqualsIgnoreCase("b"))
+                else if (input.StartsWithIgnoreCase("bench"))
                 {
-                    DoBenchPerft();
+                    HandleBenchCommand(input);
                 }
                 else
                 {
@@ -142,6 +154,11 @@ namespace Peeper
             Log($"Loaded fen '{pos.GetSFen()}'");
         }
 
+        private static void DoEvaluate()
+        {
+            var ev = NNUE.GetEvaluation(pos);
+            Log($"Evaluation: {ev}");
+        }
 
         private static void DoPerftDivide(int depth)
         {
@@ -167,27 +184,51 @@ namespace Peeper
             Log($"\r\nNodes searched: {total} in {sw.Elapsed.TotalSeconds} s ({(int)(total / sw.Elapsed.TotalSeconds):N0} nps)\r\n");
         }
 
-        private static void DoBenchPerft()
-        {
-            foreach (var (sfen, depthData) in PerftData.PerftPositions)
-            {
-                pos.LoadFromSFen(sfen);
-                Log($"{sfen}");
 
-                int maxD = Math.Min(depthData.Length, 5);
-                for (int depth = 1; depth < maxD; depth++)
+        private static void HandleBenchCommand(string input)
+        {
+            if (input.ContainsIgnoreCase("perft"))
+            {
+                foreach (var (sfen, depthData) in PerftData.PerftPositions)
                 {
-                    var correctNodes = depthData[depth];
-                    ulong ourNodes = pos.Perft(depth);
-                    if (ourNodes != depthData[depth])
+                    pos.LoadFromSFen(sfen);
+                    Log($"{sfen}");
+
+                    int maxD = Math.Min(depthData.Length, 5);
+                    for (int depth = 1; depth < maxD; depth++)
                     {
-                        Log($"{depth}\t{ourNodes} should be {correctNodes}");
-                    }
-                    else
-                    {
-                        Log($"{depth}\t{ourNodes} correct");
+                        var correctNodes = depthData[depth];
+                        ulong ourNodes = pos.Perft(depth);
+                        if (ourNodes != depthData[depth])
+                        {
+                            Log($"{depth}\t{ourNodes} should be {correctNodes}");
+                        }
+                        else
+                        {
+                            Log($"{depth}\t{ourNodes} correct");
+                        }
                     }
                 }
+            }
+            else
+            {
+                int depth = SearchBench.DefaultDepth;
+
+                try
+                {
+                    if (input.Length > 5 && int.TryParse(input.AsSpan(input.IndexOf("bench") + 6), out int newDepth))
+                    {
+                        depth = newDepth;
+                    }
+                }
+                catch (Exception e)
+                {
+                    Log("Couldn't parse the bench depth from the input!");
+                    Log(e.ToString());
+                    return;
+                }
+
+                SearchBench.Go(depth);
             }
         }
 
