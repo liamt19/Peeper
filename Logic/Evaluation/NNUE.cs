@@ -5,9 +5,14 @@ using System.Text;
 
 using NetworkT = Peeper.Logic.Evaluation.NetworkContainerT<short, short>;
 
-using Peeper.Logic.Evaluation;
+using static Peeper.Logic.Evaluation.FunUnrollThings;
 using static Peeper.Logic.Evaluation.NNUEUtils;
+
 using System.Reflection;
+using Peeper.Logic.NN;
+using System.Runtime.CompilerServices;
+using Peeper.Logic.Search;
+
 
 namespace Peeper.Logic.Evaluation
 {
@@ -83,13 +88,13 @@ namespace Peeper.Logic.Evaluation
         }
 
 
-        public static void _RefreshAccumulator(Position pos)
+        public static void RefreshAccumulator(Position pos)
         {
-            _RefreshAccumulatorPerspectiveFull(pos, Black);
-            _RefreshAccumulatorPerspectiveFull(pos, White);
+            RefreshAccumulatorPerspective(pos, Black);
+            RefreshAccumulatorPerspective(pos, White);
         }
 
-        public static void _RefreshAccumulatorPerspectiveFull(Position pos, int perspective)
+        public static void RefreshAccumulatorPerspective(Position pos, int perspective)
         {
             ref Accumulator accumulator = ref *pos.State->Accumulator;
             ref Bitboard bb = ref pos.bb;
@@ -99,7 +104,6 @@ namespace Peeper.Logic.Evaluation
             accumulator.NeedsRefresh[perspective] = false;
             accumulator.Computed[perspective] = true;
 
-            int ourKing = pos.State->KingSquares[perspective];
             var occ = bb.Occupancy;
             while (occ != 0)
             {
@@ -108,49 +112,8 @@ namespace Peeper.Logic.Evaluation
                 int type = bb.GetPieceAtIndex(sq);
                 int color = bb.GetColorAtIndex(sq);
 
-                int idx = BoardFeatureIndex(color, type, sq, perspective);
-                AddFeature(acc, acc, idx);
-            }
-
-
-#if NO
-            if (pos.Owner.CachedBuckets == null)
-            {
-                //  TODO: Upon SearchThread init, this isn't created yet :(
-                return;
-            }
-
-            ref BucketCache cache = ref pos.Owner.CachedBuckets[BucketForPerspective(ourKing, perspective)];
-            ref Bitboard entryBB = ref cache.Boards[perspective];
-            ref Accumulator entryAcc = ref cache.Accumulator;
-
-            accumulator.CopyTo(ref entryAcc, perspective);
-            bb.CopyTo(ref entryBB);
-#endif
-        }
-
-        public static void RefreshAccumulator(Position pos)
-        {
-            ref Accumulator accumulator = ref *pos.State->Accumulator;
-            ref Bitboard bb = ref pos.bb;
-
-            var bAcc = (short*)accumulator[Black];
-            var wAcc = (short*)accumulator[White];
-            Unsafe.CopyBlock(bAcc, Net.FTBiases, Accumulator.ByteSize);
-            Unsafe.CopyBlock(wAcc, Net.FTBiases, Accumulator.ByteSize);
-            accumulator.NeedsRefresh[Black] = accumulator.NeedsRefresh[White] = false;
-            accumulator.Computed[Black] = accumulator.Computed[White] = true;
-
-            var occ = bb.Occupancy;
-            while (occ != 0)
-            {
-                int sq = PopLSB(&occ);
-
-                int type = bb.GetPieceAtIndex(sq);
-                int color = bb.GetColorAtIndex(sq);
-
-                AddFeature(bAcc, bAcc, BoardFeatureIndex(color, type, sq, Black));
-                AddFeature(wAcc, wAcc, BoardFeatureIndex(color, type, sq, White));
+                int idx = BoardFeatureIndexSingle(color, type, sq, perspective);
+                UnrollAdd(acc, acc, &Net.FTWeights[idx]);
             }
 
             var hands = pos.State->Hands;
@@ -163,11 +126,8 @@ namespace Peeper.Logic.Evaluation
                     int count = thisHand.NumHeld(type);
                     for (int featureCount = 0; featureCount < count; featureCount++)
                     {
-                        var b = HandFeatureIndex(handColor, type, featureCount, Black);
-                        var w = HandFeatureIndex(handColor, type, featureCount, White);
-
-                        AddFeature(bAcc, bAcc, b);
-                        AddFeature(wAcc, wAcc, w);
+                        int idx = HandFeatureIndexSingle(handColor, type, featureCount, perspective);
+                        UnrollAdd(acc, acc, &Net.FTWeights[idx]);
                     }
                 }
             }
@@ -186,13 +146,15 @@ namespace Peeper.Logic.Evaluation
             accumulator.CopyTo(ref entryAcc, perspective);
             bb.CopyTo(ref entryBB);
 #endif
+
+            accumulator.Computed[perspective] = true;
         }
 
 
         public static int GetEvaluation(Position pos)
         {
-            RefreshAccumulator(pos);
             ref Accumulator accumulator = ref *pos.State->Accumulator;
+            ProcessUpdates(pos);
 
             Vector256<short> maxVec = Vector256.Create((short)FT_QUANT);
             Vector256<short> zeroVec = Vector256<short>.Zero;
@@ -236,9 +198,162 @@ namespace Peeper.Logic.Evaluation
             return (output / FT_QUANT + Net.L1Biases[outputBucket]) * OutputScale / (FT_QUANT * L1_QUANT);
         }
 
+
+        public static void MakeMove(Position pos, Move m)
+        {
+            ref Bitboard bb = ref pos.bb;
+
+            Accumulator* src = pos.State->Accumulator;
+            Accumulator* dst = pos.NextState->Accumulator;
+
+            dst->NeedsRefresh[0] = src->NeedsRefresh[0];
+            dst->NeedsRefresh[1] = src->NeedsRefresh[1];
+
+            dst->Computed[0] = dst->Computed[1] = false;
+
+            var (moveFrom, moveTo) = m.Unpack();
+
+            int us = pos.ToMove;
+            int ourPiece = m.IsDrop ? m.DroppedPiece : bb.GetPieceAtIndex(moveFrom);
+
+            int them = Not(us);
+            int theirPiece = bb.GetPieceAtIndex(moveTo);
+
+            ref PerspectiveUpdate bUpdate = ref dst->Update[Black];
+            ref PerspectiveUpdate wUpdate = ref dst->Update[White];
+
+            //  Remove any updates that are present
+            bUpdate.Clear();
+            wUpdate.Clear();
+
+            var (bFrom, wFrom) = BoardFeatureIndex(us, ourPiece, moveFrom);
+            var (bTo, wTo) = BoardFeatureIndex(us, m.IsPromotion ? Piece.Promote(ourPiece) : ourPiece, moveTo);
+
+            if (m.IsDrop)
+            {
+                var held = pos.State->Hands[us].NumHeld(ourPiece) - 1;
+                (bFrom, wFrom) = HandFeatureIndex(us, ourPiece, held);
+                (bTo, wTo) = BoardFeatureIndex(us, ourPiece, moveTo);
+
+                bUpdate.PushSubAdd(bFrom, bTo);
+                wUpdate.PushSubAdd(wFrom, wTo);
+            }
+            else if (theirPiece != None)
+            {
+                var (bCap, wCap) = BoardFeatureIndex(them, theirPiece, moveTo);
+
+                theirPiece = DemoteMaybe(theirPiece);
+                int held = pos.State->Hands[us].NumHeld(theirPiece);
+                var (bHand, wHand) = HandFeatureIndex(us, theirPiece, held);
+
+                bUpdate.PushSubSubAddAdd(bFrom, bCap, bTo, bHand);
+                wUpdate.PushSubSubAddAdd(wFrom, wCap, wTo, wHand);
+            }
+            else
+            {
+                bUpdate.PushSubAdd(bFrom, bTo);
+                wUpdate.PushSubAdd(wFrom, wTo);
+            }
+        }
+
+
+        [MethodImpl(Inline)]
+        public static void MakeNullMove(Position pos)
+        {
+            var currAcc = pos.State->Accumulator;
+            var nextAcc = pos.NextState->Accumulator;
+
+            currAcc->CopyTo(nextAcc);
+
+            nextAcc->Computed[Black] = currAcc->Computed[Black];
+            nextAcc->Computed[White] = currAcc->Computed[White];
+            nextAcc->Update[Black].Clear();
+            nextAcc->Update[White].Clear();
+        }
+
+        [MethodImpl(Inline)]
+        public static void ProcessUpdates(Position pos)
+        {
+            BoardState* st = pos.State;
+            for (int perspective = 0; perspective < 2; perspective++)
+            {
+                //  If the current state is correct for our perspective, no work is needed
+                if (st->Accumulator->Computed[perspective])
+                    continue;
+
+                //  If the current state needs a refresh, don't bother with previous states
+                if (st->Accumulator->NeedsRefresh[perspective])
+                {
+                    RefreshAccumulatorPerspective(pos, perspective);
+                    continue;
+                }
+
+                //  Find the most recent computed or refresh-needed accumulator
+                BoardState* curr = st - 1;
+                while (!curr->Accumulator->Computed[perspective] && !curr->Accumulator->NeedsRefresh[perspective])
+                    curr--;
+
+                if (curr->Accumulator->NeedsRefresh[perspective])
+                {
+                    //  The most recent accumulator would need to be refreshed,
+                    //  so don't bother and refresh the current one instead
+                    RefreshAccumulatorPerspective(pos, perspective);
+                }
+                else
+                {
+                    //  Update incrementally till the current accumulator is correct
+                    while (curr != st)
+                    {
+                        BoardState* prev = curr;
+                        curr++;
+                        UpdateSingle(prev->Accumulator, curr->Accumulator, perspective);
+                    }
+                }
+
+            }
+        }
+
+        [MethodImpl(Inline)]
+        public static void UpdateSingle(Accumulator* prev, Accumulator* curr, int perspective)
+        {
+            ref var updates = ref curr->Update[perspective];
+
+            if (updates.AddCnt == 0 && updates.SubCnt == 0)
+            {
+                //  For null moves, we still need to carry forward the correct accumulator state
+                prev->CopyTo(ref *curr, perspective);
+                return;
+            }
+
+            var src = (short*)((*prev)[perspective]);
+            var dst = (short*)((*curr)[perspective]);
+
+            var FeatureWeights = Net.FTWeights;
+
+            if (updates.AddCnt == 1 && updates.SubCnt == 1)
+            {
+                SubAdd(src, dst,
+                    &FeatureWeights[updates.Subs[0]],
+                    &FeatureWeights[updates.Adds[0]]);
+            }
+            else if (updates.AddCnt == 2 && updates.SubCnt == 2)
+            {
+                SubSubAddAdd(src, dst,
+                    &FeatureWeights[updates.Subs[0]],
+                    &FeatureWeights[updates.Subs[1]],
+                    &FeatureWeights[updates.Adds[0]],
+                    &FeatureWeights[updates.Adds[1]]);
+            }
+
+            curr->Computed[perspective] = true;
+        }
+
+
+
+
         public static void AddFeature(short* src, short* dst, int offset)
         {
-            var weights = &Net.FTWeights[offset * L1_SIZE];
+            var weights = &Net.FTWeights[offset];
             for (int i = 0; i < L1_SIZE; i++)
             {
                 dst[i] = (short)(src[i] + weights[i]);
@@ -247,12 +362,36 @@ namespace Peeper.Logic.Evaluation
 
         public static void RemoveFeature(short* src, short* dst, int offset)
         {
-            var weights = &Net.FTWeights[offset * L1_SIZE];
+            var weights = &Net.FTWeights[offset];
             for (int i = 0; i < L1_SIZE; i++)
             {
                 dst[i] = (short)(src[i] - weights[i]);
             }
         }
 
+        private static string Debug_GetAccumulatorStatus(Position pos)
+        {
+            StringBuilder sb = new StringBuilder();
+            BoardState* st = pos.State;
+            BoardState* first = pos.StartingState;
+
+            int dist = (int)(st - first);
+            int i = 0;
+            do
+            {
+                var acc = st->Accumulator;
+                sb.Append(i == 0 ? '*' : ' ');
+                sb.Append($"{i,2}\t");
+                sb.Append($"Computed: {(acc->Computed[0] ? 1 : 0)}/{(acc->Computed[1] ? 1 : 0)}\t");
+                sb.Append($"Refresh: {(acc->NeedsRefresh[0] ? 1 : 0)}/{(acc->NeedsRefresh[1] ? 1 : 0)}\t");
+                sb.Append($"<{acc->Black[0]} {acc->Black[1]} {acc->Black[2]} {acc->Black[3]}>\t");
+                sb.Append($"<{acc->White[0]} {acc->White[1]} {acc->White[2]} {acc->White[3]}>");
+                sb.AppendLine();
+                st--;
+                i++;
+            } while (st != first);
+
+            return sb.ToString();
+        }
     }
 }

@@ -107,12 +107,6 @@ namespace Peeper.Logic.Search
             int size = pos.GeneratePseudoLegal(ref list);
             MoveOrdering.AssignScores(pos, ref list);
 
-            MoveList unsorted = new();
-            for (int i = 0; i < list.Size; i++)
-            {
-                unsorted.Buffer[i] = list[i];
-            }
-
             for (int i = 0; i < size; i++)
             {
                 Move m = MoveOrdering.OrderNextMove(ref list, i);
@@ -238,6 +232,22 @@ namespace Peeper.Logic.Search
                 *pv++ = *childPV++;
             }
             *pv = Move.Null;
+        }
+
+        private static string Debug_GetMovesPlayed(SearchStack* ss)
+        {
+            StringBuilder sb = new StringBuilder();
+
+            while (ss->Ply >= 0)
+            {
+                sb.Insert(0, ss->CurrentMove.ToString() + ", ");
+                ss--;
+            }
+
+            if (sb.Length >= 3)
+                sb.Remove(sb.Length - 2, 2);
+
+            return sb.ToString();
         }
     }
 }

@@ -125,6 +125,12 @@ namespace Peeper.Logic.Core
         public void MakeMove(Move move)
         {
             Unsafe.CopyBlock(NextState, State, BoardState.StateCopySize);
+
+            if (UpdateNN)
+            {
+                NNUE.MakeMove(this, move);
+            }
+
             State++;
             MoveNumber++;
 
@@ -161,7 +167,7 @@ namespace Peeper.Logic.Core
             if (theirPiece != None)
             {
                 bb.RemovePiece(theirColor, theirPiece, moveTo);
-                State->Hands[ourColor].AddToHand(IsPromoted(theirPiece) ? Demote(theirPiece) : theirPiece);
+                State->Hands[ourColor].AddToHand(DemoteMaybe(theirPiece));
             }
 
             int typeToAdd = move.IsPromotion ? Piece.Promote(ourPiece)

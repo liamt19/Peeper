@@ -4,6 +4,8 @@ using System.Diagnostics;
 using System.Reflection;
 using System.Text;
 
+using static Peeper.Logic.Evaluation.NNUE;
+
 namespace Peeper.Logic.Evaluation
 {
     public static unsafe class NNUEUtils
@@ -93,16 +95,36 @@ namespace Peeper.Logic.Evaluation
         private const int TYPE_STRIDE = SquareNB;
         private const int HAND_STRIDE = TYPE_STRIDE * PieceNB;
         private const int COLOR_STRIDE = HAND_STRIDE + HAND_MAX_HELD;
-        public static int BoardFeatureIndex(int color, int type, int sq, int perspective)
+        public static int BoardFeatureIndexSingle(int color, int type, int sq, int perspective)
         {
             type = PeeperToStoat(type);
             sq = Orient(sq, perspective);
-            return ((color ^ perspective) * COLOR_STRIDE) + (type * TYPE_STRIDE) + sq;
+
+            return (((color ^ perspective) * COLOR_STRIDE) + (type * TYPE_STRIDE) + sq) * L1_SIZE;
         }
 
-        public static int HandFeatureIndex(int handColor, int type, int held, int perspective)
+        public static int HandFeatureIndexSingle(int handColor, int type, int held, int perspective)
         {
-            return ((handColor ^ perspective) * COLOR_STRIDE) + HAND_STRIDE + HandOffsets[type] + held;
+            return (((handColor ^ perspective) * COLOR_STRIDE) + HAND_STRIDE + HandOffsets[type] + held) * L1_SIZE;
+        }
+
+        public static (int bIdx, int wIdx) BoardFeatureIndex(int color, int type, int sq)
+        {
+            type = PeeperToStoat(type);
+
+            int bSq = Orient(sq, Black);
+            int wSq = Orient(sq, White);
+
+            var b = ((color ^ Black) * COLOR_STRIDE) + (type * TYPE_STRIDE) + bSq;
+            var w = ((color ^ White) * COLOR_STRIDE) + (type * TYPE_STRIDE) + wSq;
+            return (b * L1_SIZE, w * L1_SIZE);
+        }
+
+        public static (int bIdx, int wIdx) HandFeatureIndex(int handColor, int type, int held)
+        {
+            var b = ((handColor ^ Black) * COLOR_STRIDE) + HAND_STRIDE + HandOffsets[type] + held;
+            var w = ((handColor ^ White) * COLOR_STRIDE) + HAND_STRIDE + HandOffsets[type] + held;
+            return (b * L1_SIZE, w * L1_SIZE);
         }
 
 

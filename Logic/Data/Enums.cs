@@ -53,6 +53,11 @@ namespace Peeper.Logic.Data
             Assert(IsPromoted(type));
             return type - 6;
         }
+
+        public static int DemoteMaybe(int type)
+        {
+            return IsPromoted(type) ? Demote(type) : type;
+        }
     }
 
     public static class Ranks
