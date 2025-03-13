@@ -87,6 +87,13 @@ namespace Peeper.Logic.Search
             short ttScore = ss->TTHit ? MakeNormalScore(tte->Score, ss->Ply) : ScoreNone;
             Move ttMove = isRoot ? thisThread.CurrentMove : (ss->TTHit ? tte->BestMove : Move.Null);
 
+            if (!isPV
+                && tte->Depth >= depth
+                && ttScore != ScoreNone
+                && tte->IsScoreUsable(ttScore, beta))
+            {
+                return ttScore;
+            }
 
             if (ss->InCheck)
             {
@@ -130,7 +137,18 @@ namespace Peeper.Logic.Search
 
                 int newDepth = depth - 1;
 
-                score = -Negamax<NonPVNode>(pos, ss + 1, -beta, -alpha, newDepth);
+                if (!isPV || legalMoves > 1)
+                {
+                    score = -Negamax<NonPVNode>(pos, ss + 1, -alpha - 1, -alpha, newDepth);
+                }
+                
+                if (isPV && (playedMoves == 1 || score > alpha))
+                {
+                    (ss + 1)->PV[0] = Move.Null;
+                    score = -Negamax<PVNode>(pos, ss + 1, -beta, -alpha, newDepth);
+                }
+
+
                 
                 pos.UnmakeMove(m);
 

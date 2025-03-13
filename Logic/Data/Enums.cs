@@ -127,6 +127,14 @@ namespace Peeper.Logic.Data
         Exact = Beta | Alpha
     };
 
+    public static class Bound
+    {
+        public const int BoundNone = (int)TTNodeType.Invalid;
+        public const int BoundUpper = (int)TTNodeType.Beta;
+        public const int BoundLower = (int)TTNodeType.Alpha;
+        public const int BoundExact = (int)TTNodeType.Exact;
+    }
+
     public static class Squares
     {
         public const int I9 = 0;
