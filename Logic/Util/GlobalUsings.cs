@@ -5,6 +5,7 @@ global using Peeper.Logic.Core;
 global using Peeper.Logic.Data;
 global using Peeper.Logic.Util;
 
+global using static Peeper.Logic.Data.Bound;
 global using static Peeper.Logic.Data.Color;
 global using static Peeper.Logic.Data.Piece;
 global using static Peeper.Logic.Data.Ranks;

@@ -45,6 +45,9 @@ namespace Peeper.Logic.Transposition
         public readonly sbyte RelAge(byte age) => (sbyte)((TT_AGE_CYCLE + age - _AgePVType) & TT_AGE_MASK);
         public readonly bool IsEmpty => _Depth == 0;
 
+        [MethodImpl(Inline)]
+        public readonly bool IsScoreUsable(int score, int bound) => (Bound & (score >= bound ? BoundLower : BoundUpper)) != 0;
+
         public void Update(ulong key, short score, TTNodeType nodeType, int depth, Move move, short statEval, byte age, bool isPV = false)
         {
             var k = (ushort)key;

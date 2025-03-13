@@ -87,6 +87,14 @@ namespace Peeper.Logic.Search
             short ttScore = ss->TTHit ? MakeNormalScore(tte->Score, ss->Ply) : ScoreNone;
             Move ttMove = isRoot ? thisThread.CurrentMove : (ss->TTHit ? tte->BestMove : Move.Null);
 
+            if (!isPV
+                && tte->Depth >= depth
+                && ttScore != ScoreNone
+                && tte->IsScoreUsable(ttScore, beta))
+            {
+                return ttScore;
+            }
+
             if (ss->InCheck)
             {
                 //  If we are in check, don't bother getting a static evaluation or pruning.
