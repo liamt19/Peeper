@@ -1,5 +1,8 @@
 ﻿
 #define DO_ASSERTS
+#undef DO_ASSERTS
+
+#define DO_ASSERTS_A
 
 using System.Diagnostics;
 

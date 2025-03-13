@@ -83,7 +83,8 @@ namespace Peeper.Logic.Core
 
         public BoardState* StartingState => _stateBlock;
         public BoardState* NextState => (State + 1);
-        public bool InCheck => State->Checkers != 0;
+        public bool InDoubleCheck => Popcount(State->Checkers) == 2;
+        public bool Checked => State->Checkers != 0;
         public ulong Hash => State->Hash;
 
 
@@ -116,7 +117,11 @@ namespace Peeper.Logic.Core
                 }
 
                 if (i == size - 1)
-                    Log($"No move '{moveStr}' found, try one of the following: \r\n{Stringify(list.ToSpan())}");
+                {
+                    Log($"No move '{moveStr}' found, try one of the following:");
+                    Log($"{Stringify(list.ToSpan())}");
+                    Log($"{StringifyFlipFormat(list.ToSpan())}");
+                }
             }
 
             move = Move.Null;
@@ -266,6 +271,12 @@ namespace Peeper.Logic.Core
                 return false;
             }
 
+            if (InDoubleCheck && type != King)
+            {
+                //  Must move king out of double check
+                return false;
+            }
+
             int ourColor = ToMove;
             int theirColor = Not(ourColor);
 
@@ -305,7 +316,7 @@ namespace Peeper.Logic.Core
                 }
             }
 
-            if (InCheck)
+            if (Checked)
             {
                 //  We have 3 Options: block the check, take the piece giving check, or move our king out of it.
                 if (type == Piece.King)
