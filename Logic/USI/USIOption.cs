@@ -18,7 +18,7 @@ namespace Peeper.Logic.UCI
 
         public string DisplayName
         {
-            get => (!IsCutechess && USIClient.ReservedNames.Contains(Name)) ? $"USI_{Name}" : Name;
+            get => (IsFormatterUSI && USIClient.ReservedNames.Contains(Name)) ? $"USI_{Name}" : Name;
         }
 
         /// <summary>

@@ -20,7 +20,6 @@ namespace Peeper.Logic.USI
         private static Dictionary<string, USIOption> Options;
 
         public static bool Active = false;
-        public static bool IsCutechess = false;
 
         public static string[] ReservedNames => [nameof(SearchOptions.Hash)];
 
@@ -89,6 +88,10 @@ namespace Peeper.Logic.USI
                 {
                     Active = false;
                     return;
+                }
+                else if (cmd == "d")
+                {
+                    Log(pos.ToString());
                 }
                 else if (cmd == "setoption")
                 {

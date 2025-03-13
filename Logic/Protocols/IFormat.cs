@@ -10,18 +10,18 @@ namespace Peeper.Logic.Protocols
         private static readonly IFormat UCIFormatter = new UCIFormat();
 
         public static IFormat ActiveFormatter = USIFormatter;
-        public static bool IsCutechess { get; private set; } = false;
+        public static bool IsFormatterUSI { get; private set; } = true;
 
         public static void SetUSIFormatter()
         {
             ActiveFormatter = USIFormatter;
-            IsCutechess = false;
+            IsFormatterUSI = true;
         }
 
         public static void SetUCIFormatter()
         {
             ActiveFormatter = UCIFormatter;
-            IsCutechess = true;
+            IsFormatterUSI = false;
         }
     }
 

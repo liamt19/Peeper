@@ -9,25 +9,37 @@ using System.Text.RegularExpressions;
 using System.Xml.Linq;
 
 using static Peeper.Logic.Transposition.TTEntry;
-using static Peeper.Logic.Evaluation.MaterialCounting;
 
 namespace Peeper.Logic.Search
 {
     public static unsafe class Searches
     {
-
         public static int Negamax<NodeType>(Position pos, SearchStack* ss, int alpha, int beta, int depth) where NodeType : SearchNodeType
         {
             bool isRoot = typeof(NodeType) == typeof(RootNode);
             bool isPV = typeof(NodeType) != typeof(NonPVNode);
+
+            SearchThread thisThread = pos.Owner;
+            TranspositionTable TT = thisThread.TT;
+
+            if (thisThread.IsMain)
+            {
+                if (thisThread.NodeLimitReached())
+                    thisThread.SetStop();
+
+                if (thisThread.Nodes % 1024 == 0 && TimeManager.CheckHardTime())
+                    thisThread.SetStop();
+
+                if (thisThread.ShouldStop())
+                    return ScoreDraw;
+            }
 
             if (depth == 0)
             {
                 return QSearch(pos, ss, alpha, beta);
             }
 
-            SearchThread thisThread = pos.Owner;
-            TranspositionTable TT = thisThread.TT;
+            thisThread.Nodes++;
 
             ref HistoryTable history = ref thisThread.History;
             ref Bitboard bb = ref pos.bb;
@@ -43,31 +55,8 @@ namespace Peeper.Logic.Search
             short eval = ss->StaticEval;
             int startingAlpha = alpha;
 
-            if (thisThread.IsMain)
-            {
-                bool check = (thisThread.Nodes & 1023) == 1023;
-                if (check)
-                {
-                    //  If we are out of time, stop now.
-                    if (TimeManager.CheckHardTime())
-                    {
-                        thisThread.AssocPool.StopThreads = true;
-                    }
-                }
-
-                if ((SearchOptions.Threads == 1 && thisThread.Nodes >= thisThread.AssocPool.SharedInfo.HardNodeLimit) ||
-                    (check && thisThread.AssocPool.GetNodeCount() >= thisThread.AssocPool.SharedInfo.HardNodeLimit))
-                {
-                    thisThread.AssocPool.StopThreads = true;
-                }
-            }
-
             if (isPV)
-            {
                 thisThread.SelDepth = Math.Max(thisThread.SelDepth, ss->Ply + 1);
-            }
-
-            thisThread.Nodes++;
 
             if (!isRoot)
             {
@@ -78,7 +67,7 @@ namespace Peeper.Logic.Search
 
                 if (thisThread.AssocPool.StopThreads || ss->Ply >= MaxSearchStackPly - 1)
                 {
-                    return pos.InCheck ? ScoreDraw : GetMaterial(pos);
+                    return pos.Checked ? ScoreDraw : NNUE.GetEvaluation(pos);
                 }
 
 #if NO
@@ -91,7 +80,7 @@ namespace Peeper.Logic.Search
 #endif
             }
 
-            ss->InCheck = pos.InCheck;
+            ss->InCheck = pos.Checked;
             ss->TTHit = TT.Probe(pos.Hash, out TTEntry* tte);
             ss->TTPV = isPV || (ss->TTHit && tte->PV);
 
@@ -109,8 +98,8 @@ namespace Peeper.Logic.Search
 
         MovesLoop:
 
-            int legalMoves = 0;     //  Number of legal moves that have been encountered so far in the loop.
-            int playedMoves = 0;    //  Number of moves that have been MakeMove'd so far.
+            int legalMoves = 0;
+            int playedMoves = 0;
 
             MoveList list = new();
             int size = pos.GeneratePseudoLegal(ref list);
@@ -236,6 +225,12 @@ namespace Peeper.Logic.Search
         {
             SearchThread thisThread = pos.Owner;
             TranspositionTable TT = thisThread.TT;
+
+            if (thisThread.IsMain && thisThread.NodeLimitReached())
+            {
+                thisThread.SetStop();
+                return ScoreDraw;
+            }
 
             thisThread.Nodes++;
 

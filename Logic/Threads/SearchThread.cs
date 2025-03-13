@@ -28,7 +28,6 @@ namespace Peeper.Logic.Threads
         private bool _Disposed = false;
 
         public ulong Nodes;
-        public ulong HardNodeLimit;
 
         public int ThreadIdx;
         public int PVIndex;
@@ -61,7 +60,6 @@ namespace Peeper.Logic.Threads
         private Barrier _InitBarrier = new Barrier(2);
 
         public Move CurrentMove => RootMoves[PVIndex].Move;
-        public string? FriendlyName => _SysThread.Name;
 
         public SearchThread(int idx)
         {
@@ -91,6 +89,10 @@ namespace Peeper.Logic.Threads
             //  This isn't necessary but doesn't hurt either.
             _InitBarrier.RemoveParticipant();
         }
+
+
+        public string? FriendlyName => _SysThread.Name;
+        public ulong HardNodeLimit => AssocPool.SharedInfo.HardNodeLimit;
 
 
         /// <summary>
@@ -271,8 +273,6 @@ namespace Peeper.Logic.Threads
 
             //  Create a copy of the AssocPool's root SearchInformation instance.
             SearchInformation info = AssocPool.SharedInfo;
-
-            HardNodeLimit = info.HardNodeLimit;
 
             info.Position = RootPosition;
 
@@ -463,6 +463,24 @@ namespace Peeper.Logic.Threads
 
             return false;
         }
+
+        public bool NodeLimitReached()
+        {
+            if (SearchOptions.Threads == 1)
+            {
+                return Nodes >= HardNodeLimit;
+            }
+            else if (Nodes % 1024 == 0)
+            {
+                return AssocPool.GetNodeCount() >= HardNodeLimit;
+            }
+
+            return false;
+        }
+
+        public void SetStop() => AssocPool.StopThreads = true;
+        public bool ShouldStop() => AssocPool.StopThreads;
+
 
         /// <summary>
         /// Frees up the memory that was allocated to this SearchThread.

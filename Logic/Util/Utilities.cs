@@ -1,6 +1,7 @@
 ﻿
 using Peeper.Logic.Search;
 using Peeper.Logic.Threads;
+using Peeper.Logic.USI;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -333,17 +334,40 @@ namespace Peeper.Logic.Util
             for (int i = 0; i < loopMax; i++)
             {
                 if (listSize == 0 && list[i].Move.Equals(Move.Null))
-                {
                     break;
-                }
-                string s = list[i].Move.ToString();
-                sb.Append(s + ", ");
+                sb.Append($"{list[i].Move}, ");
             }
 
             if (sb.Length > 3)
-            {
                 sb.Remove(sb.Length - 2, 2);
+
+            return sb.ToString();
+        }
+
+        public static string StringifyFlipFormat(Span<ScoredMove> list, int listSize = 0)
+        {
+            if (IsFormatterUSI)
+                SetUCIFormatter();
+            else
+                SetUSIFormatter();
+
+            StringBuilder sb = new StringBuilder();
+            int loopMax = (listSize > 0) ? Math.Min(list.Length, listSize) : list.Length;
+            for (int i = 0; i < loopMax; i++)
+            {
+                if (listSize == 0 && list[i].Move.Equals(Move.Null))
+                    break;
+                sb.Append($"{list[i].Move}, ");
             }
+
+            if (sb.Length > 3)
+                sb.Remove(sb.Length - 2, 2);
+
+            if (IsFormatterUSI)
+                SetUCIFormatter();
+            else
+                SetUSIFormatter();
+
             return sb.ToString();
         }
 
