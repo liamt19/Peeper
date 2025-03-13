@@ -151,7 +151,14 @@ namespace Peeper.Logic.Evaluation
         }
 
 
-        public static int GetEvaluation(Position pos)
+        public static short GetEvaluation(Position pos)
+        {
+            int ev = Evaluate(pos);
+            ev = int.Clamp(ev, -NNUEAbsMax, NNUEAbsMax);
+            return (short)ev;
+        }
+
+        private static int Evaluate(Position pos)
         {
             ref Accumulator accumulator = ref *pos.State->Accumulator;
             ProcessUpdates(pos);
