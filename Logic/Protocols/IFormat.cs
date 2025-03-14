@@ -6,8 +6,8 @@ namespace Peeper.Logic.Protocols
 {
     public static class Formatting
     {
-        private static readonly IFormat USIFormatter = new USIFormat();
-        private static readonly IFormat UCIFormatter = new UCIFormat();
+        public static readonly IFormat USIFormatter = new USIFormat();
+        public static readonly IFormat UCIFormatter = new UCIFormat();
 
         public static IFormat ActiveFormatter = USIFormatter;
         public static bool IsFormatterUSI { get; private set; } = true;
@@ -34,6 +34,8 @@ namespace Peeper.Logic.Protocols
 
         public string FormatSFen(Position pos);
         public string ParseSFen(string sfen);
+
+        public string DisplayBoard(Bitboard bb);
 
         public string FormatMateDistance(int score);
 

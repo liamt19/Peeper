@@ -91,6 +91,8 @@ namespace Peeper.Logic.Core
         [MethodImpl(Inline)]
         public bool IsCapture(Move m) => (bb.GetPieceAtIndex(m.To) != None);
 
+        [MethodImpl(Inline)]
+        public int MovedPiece(Move m) => (m.IsDrop ? m.DroppedPiece : bb.GetPieceAtIndex(m.From));
 
         public bool TryMakeMove(string moveStr)
         {
@@ -578,6 +580,7 @@ namespace Peeper.Logic.Core
 
             sb.AppendLine(bb.ToString());
 
+            sb.AppendLine($"\r\nFEN: {ActiveFormatter.FormatSFen(this)}");
             sb.AppendLine($"\r\nBlack hand: {State->Hands[Black].ToString(Black)}");
             sb.AppendLine($"White hand: {State->Hands[White].ToString(White)}");
             sb.AppendLine($"\r\n{ColorToString(ToMove)} to move");

@@ -95,6 +95,10 @@ namespace Peeper
                 {
                     HandleBenchCommand(input);
                 }
+                else if (input.EqualsIgnoreCase("pgn"))
+                {
+                    PGNToKIF.ParseFromSTDIn();
+                }
                 else
                 {
                     //  You can just copy paste in a FEN string rather than typing "position fen" before it.

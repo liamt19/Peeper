@@ -177,7 +177,7 @@ namespace Peeper.Logic.Core
 
         public override string ToString()
         {
-            return PrintBoard(this);
+            return ActiveFormatter.DisplayBoard(this);
         }
 
         public Bitboard DebugClone()

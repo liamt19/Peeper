@@ -12,7 +12,7 @@ namespace Peeper.Logic.Protocols
             return $"{(char)('a' + GetIndexFile(sq))}{(char)('1' + GetIndexRank(sq))}";
         }
 
-        public int ParseSquare(string str)
+        public static int ParseSquare(string str)
         {
             if (str.Length != 2)
                 return SquareNB;
@@ -25,6 +25,9 @@ namespace Peeper.Logic.Protocols
 
             return rank * 9 + file;
         }
+
+        public static int ParseRankChar(char c) => c - '1';
+        public static int ParseFileChar(char c) => c - 'a';
 
 
         public string FormatMove(Move move)
@@ -62,8 +65,8 @@ namespace Peeper.Logic.Protocols
             var splits = fen.Split(' ');
             string stm = splits[1] == "w" ? "b" : "w";
 
-            var fmv = (pos.MoveNumber - 1) / 2;
-            return $"{splits[0]}[{splits[2]} {stm} - {fmv}";
+            var fmv = (pos.MoveNumber + 1) / 2;
+            return $"{splits[0]}[{splits[2]}] {stm} - {fmv}";
         }
 
         public string ParseSFen(string sfen)
@@ -77,12 +80,54 @@ namespace Peeper.Logic.Protocols
             var stm = splits[2] == "w" ? "b" : "w";
             
             var fmv = 1;
-            if (splits.Length > 3 && int.TryParse(splits[3], out int mv))
+            if (splits.Length > 3 && int.TryParse(splits[4], out int mv))
             {
                 fmv = ((mv * 2) - (stm == "b" ? 1 : 0));
             }
 
             return $"{placements} {stm} {hand} {fmv}";
+        }
+
+        public string DisplayBoard(Bitboard bb)
+        {
+            StringBuilder sb = new StringBuilder();
+            sb.Append("\r\n");
+
+            char[] fileNames = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i'];
+
+            sb.AppendLine($"+----+----+----+----+----+----+----+----+----+");
+            for (int y = 0; y < 9; y++)
+            {
+                sb.Append("|");
+                for (int x = 0; x < 9; x++)
+                {
+                    int sq = CoordToIndex(x, y);
+                    int type = bb.GetPieceAtIndex(sq);
+
+                    sb.Append(' ');
+
+                    if (type != None)
+                    {
+                        int color = bb.GetColorAtIndex(sq);
+                        var c = PieceToSFen(color, type);
+                        sb.Append(c.Length == 1 ? $" {c}" : c);
+                    }
+                    else
+                    {
+                        sb.Append("  ");
+                    }
+
+                    sb.Append(" |");
+                }
+                sb.Append($" {9 - y}");
+
+                sb.AppendLine();
+                sb.AppendLine("+----+----+----+----+----+----+----+----+----+  ");
+            }
+
+            sb.AppendLine($"   {string.Join(" |  ", fileNames.Select(x => char.ToUpper(x)))}  ");
+
+            return sb.ToString();
         }
 
 
