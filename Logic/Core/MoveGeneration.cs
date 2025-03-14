@@ -7,7 +7,7 @@ namespace Peeper.Logic.Core
 {
     public unsafe partial class Position
     {
-        public void AddPawnMoves(ref MoveList list)
+        public void AddPawnMoves(ref MoveList list, Bitmask? targetSquares = null)
         {
             int stm = ToMove;
             var up = ShiftUpDir(stm);
@@ -15,11 +15,12 @@ namespace Peeper.Logic.Core
             var us = bb.Colors[stm];
 
             Bitmask ourPawns = bb.Pieces[Pawn] & us;
+            var targets = targetSquares ?? ~us;
 
             var promoSquares = (stm == Black ? BlackPromotionSquares : WhitePromotionSquares);
             Bitmask forcePromoMask = ForcedPromotionSquares(stm, Pawn);
 
-            var normalPushes = ourPawns.Shift(up) & ~us;
+            var normalPushes = ourPawns.Shift(up) & targets;
             var promotions = normalPushes & promoSquares;
 
             normalPushes &= ~forcePromoMask;
@@ -36,7 +37,7 @@ namespace Peeper.Logic.Core
             }
         }
 
-        public void AddNormalMoves(ref MoveList list, int type)
+        public void AddNormalMoves(ref MoveList list, int type, Bitmask? targetSquares = null)
         {
             int stm = ToMove;
 
@@ -47,11 +48,12 @@ namespace Peeper.Logic.Core
             var occ = bb.Occupancy;
             var us = bb.Colors[stm];
             var ourPieces = bb.Pieces[type] & us;
+            var targets = targetSquares ?? ~us;
 
             while (ourPieces != 0)
             {
                 int sq = PopLSB(&ourPieces);
-                var moves = bb.GetPieceAttacks(stm, type, sq, occ) & ~us;
+                var moves = bb.GetPieceAttacks(stm, type, sq, occ) & targets;
                 var promos = moves & promoSquares;
                 if (promoSquares.HasBit(sq))
                 {
@@ -98,28 +100,30 @@ namespace Peeper.Logic.Core
             }
         }
 
+
         public void AddAllMoves(ref MoveList list)
         {
             AddPawnMoves(ref list);
 
-            AddNormalMoves(ref list, Lance);
-            AddNormalMoves(ref list, Knight);
-            AddNormalMoves(ref list, Silver);
-            AddNormalMoves(ref list, Bishop);
-            AddNormalMoves(ref list, Rook);
-
-            AddNormalMoves(ref list, PawnPromoted);
-            AddNormalMoves(ref list, LancePromoted);
-            AddNormalMoves(ref list, KnightPromoted);
-            AddNormalMoves(ref list, SilverPromoted);
-            AddNormalMoves(ref list, BishopPromoted);
-            AddNormalMoves(ref list, RookPromoted);
-
-            AddNormalMoves(ref list, Gold);
-            AddNormalMoves(ref list, King);
+            for (int type = Lance; type < PieceNB; type++)
+            {
+                AddNormalMoves(ref list, type);
+            }
 
             AddDropMoves(ref list);
         }
+
+        public void AddCaptures(ref MoveList list)
+        {
+            Bitmask targets = bb.Colors[Not(ToMove)];
+
+            AddPawnMoves(ref list, targets);
+            for (int type = Lance; type < PieceNB; type++)
+            {
+                AddNormalMoves(ref list, type, targets);
+            }
+        }
+
 
         public int GenerateLegal(ref MoveList list)
         {
@@ -145,9 +149,16 @@ namespace Peeper.Logic.Core
             return list.Size;
         }
 
+
         public int GeneratePseudoLegal(ref MoveList list)
         {
             AddAllMoves(ref list);
+            return list.Size;
+        }
+
+        public int GenerateCaptures(ref MoveList list)
+        {
+            AddCaptures(ref list);
             return list.Size;
         }
     }

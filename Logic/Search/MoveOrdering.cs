@@ -36,6 +36,34 @@ namespace Peeper.Logic.Search
             }
         }
 
+
+        public static void AssignQSearchScores(Position pos, ref MoveList list, Move ttMove)
+        {
+            ref Bitboard bb = ref pos.bb;
+            int size = list.Size;
+
+            for (int i = 0; i < size; i++)
+            {
+                ref ScoredMove sm = ref list[i];
+                Move m = sm.Move;
+                var (moveFrom, moveTo) = m.Unpack();
+
+                int thisPiece = bb.GetPieceAtIndex(moveFrom);
+                int captured = bb.GetPieceAtIndex(moveTo);
+                Assert(captured != None);
+
+                if (m.Equals(ttMove))
+                {
+                    sm.Score = int.MaxValue - 1000000;
+                }
+                else
+                {
+                    //  Approximately mvv lva.
+                    sm.Score = (GetHandValue(captured) * 10) - GetHandValue(thisPiece);
+                }
+            }
+        }
+
         public static Move NextMove(ScoredMove* moves, int size, int listIndex)
         {
             return moves[listIndex].Move;

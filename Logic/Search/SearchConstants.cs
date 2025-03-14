@@ -19,6 +19,8 @@ namespace Peeper.Logic.Search
         public const int ScoreTTWin = ScoreMate - 512;
         public const int ScoreTTLoss = -ScoreTTWin;
 
+        public const short NNUEAbsMax = ScoreTTWin - 1;
+
 
         public const int MaximumSearchTime = int.MaxValue - 1;
         public const ulong MaximumSearchNodes = ulong.MaxValue - 1;

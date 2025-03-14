@@ -36,7 +36,7 @@ namespace Peeper.Logic.Search
 
             if (depth == 0)
             {
-                return QSearch(pos, ss, alpha, beta);
+                return QSearch<NodeType>(pos, ss, alpha, beta);
             }
 
             thisThread.Nodes++;
@@ -239,10 +239,11 @@ namespace Peeper.Logic.Search
             return bestScore;
         }
 
-        public static int QSearch(Position pos, SearchStack* ss, int alpha, int beta)
+        public static int QSearch<NodeType>(Position pos, SearchStack* ss, int alpha, int beta) where NodeType : SearchNodeType
         {
+            bool isPV = typeof(NodeType) != typeof(NonPVNode);
+
             SearchThread thisThread = pos.Owner;
-            TranspositionTable TT = thisThread.TT;
 
             if (thisThread.IsMain && thisThread.NodeLimitReached())
             {
@@ -252,7 +253,109 @@ namespace Peeper.Logic.Search
 
             thisThread.Nodes++;
 
-            return NNUE.GetEvaluation(pos);
+            TranspositionTable TT = thisThread.TT;
+            ref HistoryTable history = ref thisThread.History;
+            ref Bitboard bb = ref pos.bb;
+
+            int us = pos.ToMove;
+
+            Move bestMove = Move.Null;
+
+            int score = -ScoreInfinite;
+            int bestScore = -ScoreInfinite;
+
+            const short rawEval = 0;
+            int eval = ss->StaticEval;
+            int startingAlpha = alpha;
+
+            ss->InCheck = pos.Checked;
+            ss->TTHit = TT.Probe(pos.Hash, out TTEntry* tte);
+            short ttScore = ss->TTHit ? MakeNormalScore(tte->Score, ss->Ply) : ScoreNone;
+            Move ttMove = ss->TTHit ? tte->BestMove : Move.Null;
+            bool ttPV = ss->TTHit && tte->PV;
+
+            if (isPV)
+            {
+                ss->PV[0] = Move.Null;
+                thisThread.SelDepth = Math.Max(thisThread.SelDepth, ss->Ply + 1);
+            }
+
+            if (pos.IsDraw())
+                return ScoreDraw;
+
+            if (ss->Ply >= MaxSearchStackPly - 1)
+                return ss->InCheck ? ScoreDraw : NNUE.GetEvaluation(pos);
+
+            if (!isPV
+                && ttScore != ScoreNone
+                && tte->IsScoreUsable(ttScore, beta))
+            {
+                return ttScore;
+            }
+
+            if (ss->InCheck)
+            {
+                eval = ss->StaticEval = -ScoreInfinite;
+                goto MovesLoop;
+            }
+
+            eval = ss->StaticEval = NNUE.GetEvaluation(pos);
+
+            bestScore = eval;
+
+            if (eval >= beta)
+                return eval;
+
+            alpha = Math.Max(alpha, eval);
+
+        MovesLoop:
+
+            MoveList list = new();
+            int size = pos.GenerateCaptures(ref list);
+            MoveOrdering.AssignQSearchScores(pos, ref list, ttMove);
+
+            for (int i = 0; i < size; i++)
+            {
+                Move m = MoveOrdering.OrderNextMove(ref list, i);
+
+                if (!pos.IsLegal(m))
+                {
+                    continue;
+                }
+
+                var (moveFrom, moveTo) = m.Unpack();
+
+                ss->CurrentMove = m;
+                ss->ContinuationHistory = history.Continuations[0][0][0, 0, 0];
+
+                pos.MakeMove(m);
+                score = -QSearch<NodeType>(pos, ss + 1, -beta, -alpha);
+                pos.UnmakeMove(m);
+
+                if (score > bestScore)
+                {
+                    bestScore = score;
+
+                    if (score > alpha)
+                    {
+                        bestMove = m;
+
+                        if (isPV)
+                        {
+                            AppendToPV(ss->PV, m, (ss + 1)->PV);
+                        }
+
+                        if (score >= beta)
+                        {
+                            break;
+                        }
+
+                        alpha = score;
+                    }
+                }
+            }
+
+            return bestScore;
         }
 
         private static void AppendToPV(Move* pv, Move move, Move* childPV)
