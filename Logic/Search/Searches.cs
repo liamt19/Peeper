@@ -142,7 +142,7 @@ namespace Peeper.Logic.Search
                 if (depth >= 2 && legalMoves >= 6)
                 {
                     //  At least reduce by 1, but never enough to drop into qsearch
-                    int reducedDepth = Math.Max(1, Math.Min(newDepth - R, newDepth - 1));
+                    int reducedDepth = Math.Min(Math.Max(1, newDepth - R), newDepth - 1);
 
                     score = -Negamax<NonPVNode>(pos, ss + 1, -alpha - 1, -alpha, reducedDepth);
 
