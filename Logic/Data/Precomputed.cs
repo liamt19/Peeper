@@ -23,6 +23,8 @@ namespace Peeper.Logic.Data
         private static readonly Bitmask** LineBB;
         private static readonly Bitmask** RayBB;
 
+        private static readonly int** LMRTable;
+
         public static Bitmask PawnMoveMask(int color, int sq) => PawnMasks[color * SquareNB + sq];
         public static Bitmask LanceMoveMask(int color, int sq) => LanceMasks[color * SquareNB + sq];
         public static Bitmask KnightMoveMask(int color, int sq) => KnightMasks[color * SquareNB + sq];
@@ -41,6 +43,8 @@ namespace Peeper.Logic.Data
         public static Bitmask Between(int a, int b) => BetweenBB[a][b];
         public static Bitmask Line(int a, int b) => LineBB[a][b];
         public static Bitmask Ray(int a, int b) => RayBB[a][b];
+
+        public static int LMR(int depth, int moveIndex) => LMRTable[depth][moveIndex];
 
         static Precomputed()
         {
@@ -61,9 +65,13 @@ namespace Peeper.Logic.Data
             LineBB = (Bitmask**)AlignedAllocZeroed((nuint)sizeof(Bitmask*) * SquareNB);
             RayBB = (Bitmask**)AlignedAllocZeroed((nuint)sizeof(Bitmask*) * SquareNB);
 
+            LMRTable = (int**)AlignedAllocZeroed((nuint)sizeof(int*) * MaxPly);
+
             CreatePieceRays();
             CreatePieceMasks();
             CreateSpecialRays();
+
+            CreateReductions();
         }
 
         private static void CreatePieceRays()
@@ -157,6 +165,22 @@ namespace Peeper.Logic.Data
                     }
 
                     LineBB[s1][s2] = BetweenBB[s1][s2] | SquareBB(s2);
+                }
+            }
+        }
+
+
+        private static void CreateReductions()
+        {
+            for (int depth = 0; depth < MaxPly; depth++)
+            {
+                LMRTable[depth] = AlignedAllocZeroed<int>(MoveListSize);
+
+                for (int moveIndex = 0; moveIndex < MoveListSize; moveIndex++)
+                {
+                    var lnDepth = Math.Log(Math.Max(depth, 1));
+                    var lnIndex = Math.Log(Math.Max(moveIndex, 1));
+                    LMRTable[depth][moveIndex] = (int)(0.25 + lnDepth * lnIndex / 2.25);
                 }
             }
         }
