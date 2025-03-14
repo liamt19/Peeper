@@ -51,7 +51,7 @@ namespace Peeper.Logic.Search
             int score = -ScoreInfinite;
             int bestScore = -ScoreInfinite;
 
-            const short rawEval = 0;
+            short rawEval = 0;
             short eval = ss->StaticEval;
             int startingAlpha = alpha;
 
@@ -100,6 +100,36 @@ namespace Peeper.Logic.Search
                 //  If we are in check, don't bother getting a static evaluation or pruning.
                 ss->StaticEval = eval = ScoreNone;
                 goto MovesLoop;
+            }
+#if TODO
+            else if (ss->TTHit)
+            {
+                rawEval = tte->StatEval != ScoreNone ? tte->StatEval : NNUE.GetEvaluation(pos);
+                eval = ss->StaticEval = AdjustEval(thisThread, us, rawEval);
+
+                //  If the ttScore isn't invalid, use that score instead of the static eval.
+                if (ttScore != ScoreNone && tte->IsScoreUsable(ttScore, eval))
+                    eval = ttScore;
+            }
+            else
+            {
+                rawEval = NNUE.GetEvaluation(pos);
+                eval = ss->StaticEval = AdjustEval(thisThread, us, rawEval);
+                tte->Update(pos.Hash, ScoreNone, BoundNone, DepthNone, Move.Null, rawEval, TT.Age, ss->TTPV);
+            }
+#endif
+
+            eval = ss->StaticEval = NNUE.GetEvaluation(pos);
+
+            if (depth <= RFPDepth
+#if TODO
+                && ttMove.IsNull()
+                && !IsWin(eval)
+                && eval >= beta
+#endif
+                && eval - RFPMargin(depth) >= beta)
+            {
+                return eval;
             }
 
 
@@ -370,6 +400,16 @@ namespace Peeper.Logic.Search
             }
 
             return bestScore;
+        }
+
+        private static short AdjustEval(SearchThread thisThread, int us, short score)
+        {
+            return score;
+        }
+
+        private static int RFPMargin(int depth)
+        {
+            return (depth) * RFPMult;
         }
 
         private static void AppendToPV(Move* pv, Move move, Move* childPV)

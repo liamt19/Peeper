@@ -268,7 +268,12 @@ namespace Peeper.Logic.USI
             Options[nameof(Hash)].SetMinMax(1, 1048576);
 
             Options[nameof(MoveOverhead)].SetMinMax(0, 2000);
+
             Options[nameof(AspWindow)].SetMinMax(0, 30);
+
+            Options[nameof(RFPDepth)].SetMinMax(1, 10);
+            Options[nameof(RFPMult)].SetMinMax(50, 140);
+
 
             foreach (var optName in Options.Keys)
             {

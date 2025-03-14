@@ -14,5 +14,8 @@ namespace Peeper.Logic.Search
         public static bool CuteChessWorkaround = false;
 
         public static int AspWindow = 0;
+
+        public static int RFPMult = 100;
+        public static int RFPDepth = 5;
     }
 }
