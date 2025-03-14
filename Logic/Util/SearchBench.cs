@@ -5,7 +5,7 @@ namespace Peeper.Logic.Util
 {
     public static class SearchBench
     {
-        public const int DefaultDepth = 4;
+        public const int DefaultDepth = 8;
 
         public static void Go(int depth = DefaultDepth, bool openBench = false)
         {

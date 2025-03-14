@@ -44,5 +44,14 @@ namespace Peeper.Logic.Search
         {
             return Math.Abs(Math.Abs(score) - ScoreMate) < MaxDepth;
         }
+
+        [MethodImpl(Inline)]
+        public static bool IsWin(int score) => score >= ScoreTTWin;
+        
+        [MethodImpl(Inline)]
+        public static bool IsLoss(int score) => score <= ScoreTTLoss;
+        
+        [MethodImpl(Inline)]
+        public static bool IsDecisive(int score) => IsWin(score) || IsLoss(score);
     }
 }
