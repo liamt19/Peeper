@@ -121,8 +121,10 @@ namespace Peeper.Logic.Search
                     continue;
                 }
 
-                legalMoves++;
                 var (moveFrom, moveTo) = m.Unpack();
+
+                legalMoves++;
+                int R = LMR(depth, legalMoves);
 
                 ss->CurrentMove = m;
                 ss->ContinuationHistory = history.Continuations[0][0][0, 0, 0];
@@ -137,7 +139,19 @@ namespace Peeper.Logic.Search
 
                 int newDepth = depth - 1;
 
-                if (!isPV || legalMoves > 1)
+                if (depth >= 2 && legalMoves >= 6)
+                {
+                    //  At least reduce by 1, but never enough to drop into qsearch
+                    int reducedDepth = Math.Min(Math.Max(1, newDepth - R), newDepth - 1);
+
+                    score = -Negamax<NonPVNode>(pos, ss + 1, -alpha - 1, -alpha, reducedDepth);
+
+                    if (score > alpha && reducedDepth < newDepth)
+                    {
+                        score = -Negamax<NonPVNode>(pos, ss + 1, -alpha - 1, -alpha, newDepth);
+                    }
+                }
+                else if (!isPV || legalMoves > 1)
                 {
                     score = -Negamax<NonPVNode>(pos, ss + 1, -alpha - 1, -alpha, newDepth);
                 }
