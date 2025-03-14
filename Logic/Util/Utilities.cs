@@ -45,7 +45,7 @@ namespace Peeper.Logic.Util
         public static readonly Bitmask BlackPromotionSquares = new(0x1FFFF, 0xFFC0000000000000);
         public static readonly Bitmask WhitePromotionSquares = new(0, 0x7FFFFFF);
 
-        public const string InitialFEN_UCI = @"lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL[-] w 3";
+        public const string InitialFEN_UCI = @"lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL[-] w - 1";
         public const string InitialFEN = @"lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1";
         public const string DropsFEN = @"4k4/9/9/9/9/9/9/9/4K4 b RBGSNLP 1";
 

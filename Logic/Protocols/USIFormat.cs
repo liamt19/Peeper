@@ -56,6 +56,48 @@ namespace Peeper.Logic.Protocols
         }
 
 
+        public string DisplayBoard(Bitboard bb)
+        {
+            StringBuilder sb = new StringBuilder();
+            sb.Append("\r\n");
+
+            char[] fileNames = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i'];
+
+            sb.AppendLine($"   {string.Join(" |  ", Enumerable.Range(1, 9).Reverse())}  ");
+            sb.AppendLine($"+----+----+----+----+----+----+----+----+----+");
+            for (int y = 0; y < 9; y++)
+            {
+                sb.Append("|");
+                for (int x = 0; x < 9; x++)
+                {
+                    int sq = CoordToIndex(x, y);
+                    int type = bb.GetPieceAtIndex(sq);
+
+                    sb.Append(' ');
+
+                    if (type != None)
+                    {
+                        int color = bb.GetColorAtIndex(sq);
+                        var c = PieceToSFen(color, type);
+                        sb.Append(c.Length == 1 ? $" {c}" : c);
+                    }
+                    else
+                    {
+                        sb.Append("  ");
+                    }
+
+                    sb.Append(" |");
+                }
+                sb.Append($" {char.ToUpper(fileNames[y])}");
+
+                sb.AppendLine();
+                sb.AppendLine("+----+----+----+----+----+----+----+----+----+  ");
+            }
+
+            return sb.ToString();
+        }
+
+
 
         public string FormatMateDistance(int score)
         {
