@@ -89,6 +89,7 @@ namespace Peeper.Logic.Threads
 
             StopThreads = false;
             SharedInfo = rootInfo;
+            SharedInfo.SearchActive = true;
 
             MoveList list = new();
             int size = rootPosition.GenerateLegal(ref list);

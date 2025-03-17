@@ -94,6 +94,9 @@ namespace Peeper.Logic.Core
         [MethodImpl(Inline)]
         public int MovedPiece(Move m) => (m.IsDrop ? m.DroppedPiece : bb.GetPieceAtIndex(m.From));
 
+        [MethodImpl(Inline)]
+        public int GetPieceAtIndex(int sq) => bb.GetPieceAtIndex(sq);
+
         public bool TryMakeMove(string moveStr)
         {
             if (TryFindMove(moveStr, out Move move))

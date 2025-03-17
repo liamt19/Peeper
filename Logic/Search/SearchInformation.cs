@@ -31,5 +31,28 @@ namespace Peeper.Logic.Search
         public bool IsInfinite => !HasDepthLimit && !HasTimeLimit;
 
 
+        public static SearchInformation DatagenPrelim(Position pos, ulong nodeLimit, int depthLimit)
+        {
+            return new SearchInformation(pos)
+            {
+                SoftNodeLimit = nodeLimit * 20,
+                HardNodeLimit = nodeLimit * 400,
+                DepthLimit = Math.Max(8, depthLimit + 2),
+                OnDepthFinish = null,
+                OnSearchFinish = null,
+            };
+        }
+
+        public static SearchInformation DatagenStandard(Position pos, ulong nodeLimit, int depthLimit)
+        {
+            return new SearchInformation(pos)
+            {
+                SoftNodeLimit = nodeLimit,
+                HardNodeLimit = nodeLimit * 20,
+                DepthLimit = depthLimit,
+                OnDepthFinish = null,
+                OnSearchFinish = null,
+            };
+        }
     }
 }

@@ -127,6 +127,7 @@ namespace Peeper.Logic.Core
 
         public int GenerateLegal(ref MoveList list)
         {
+            list.Clear();
             AddAllMoves(ref list);
 
             int curr = 0;
@@ -152,12 +153,14 @@ namespace Peeper.Logic.Core
 
         public int GeneratePseudoLegal(ref MoveList list)
         {
+            list.Clear();
             AddAllMoves(ref list);
             return list.Size;
         }
 
         public int GenerateCaptures(ref MoveList list)
         {
+            list.Clear();
             AddCaptures(ref list);
             return list.Size;
         }
