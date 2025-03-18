@@ -9,21 +9,29 @@ namespace Peeper.Logic.Data
 
         public int Data { get; private set; }
 
-        private const int PawnShift   = 0;
-        private const int LanceShift  = PawnShift + 8;
-        private const int KnightShift = LanceShift + 4;
-        private const int SilverShift = KnightShift + 4;
-        private const int BishopShift = SilverShift + 4;
-        private const int RookShift   = BishopShift + 4;
-        private const int GoldShift   = RookShift + 4;
+        private const int PawnBits   = 5;
+        private const int LanceBits  = 3;
+        private const int KnightBits = 3;
+        private const int SilverBits = 3;
+        private const int GoldBits   = 3;
+        private const int BishopBits = 2;
+        private const int RookBits   = 2;
 
-        private const int PawnMask   = 0b11111 << PawnShift;
-        private const int LanceMask  = 0b01111 << LanceShift;
-        private const int KnightMask = 0b01111 << KnightShift;
-        private const int SilverMask = 0b01111 << SilverShift;
-        private const int BishopMask = 0b01111 << BishopShift;
-        private const int RookMask   = 0b01111 << RookShift;
-        private const int GoldMask   = 0b01111 << GoldShift;
+        private const int PawnShift   = 0;
+        private const int LanceShift  = PawnShift + PawnBits;
+        private const int KnightShift = LanceShift + LanceBits;
+        private const int SilverShift = KnightShift + KnightBits;
+        private const int GoldShift   = SilverShift + SilverBits;
+        private const int BishopShift = GoldShift + GoldBits;
+        private const int RookShift   = BishopShift + BishopBits;
+
+        private const int PawnMask   = ((1 << PawnBits) - 1) << PawnShift;
+        private const int LanceMask  = ((1 << LanceBits) - 1) << LanceShift;
+        private const int KnightMask = ((1 << KnightBits) - 1) << KnightShift;
+        private const int SilverMask = ((1 << SilverBits) - 1) << SilverShift;
+        private const int GoldMask   = ((1 << GoldBits) - 1) << GoldShift;
+        private const int BishopMask = ((1 << BishopBits) - 1) << BishopShift;
+        private const int RookMask   = ((1 << RookBits) - 1) << RookShift;
 
         public Hand()
         {
@@ -90,7 +98,7 @@ namespace Peeper.Logic.Data
 
         public int GetTotalHeld()
         {
-            return NumHeld(Pawn) + NumHeld(Lance) + NumHeld(Knight) + NumHeld(Silver) + NumHeld(Bishop) + NumHeld(Rook) + NumHeld(Gold);
+            return NumHeld(Pawn) + NumHeld(Lance) + NumHeld(Knight) + NumHeld(Silver) + NumHeld(Gold) + NumHeld(Bishop) + NumHeld(Rook);
         }
 
         private static int ShiftFor(int type)
@@ -101,9 +109,9 @@ namespace Peeper.Logic.Data
                 Lance   => LanceShift,
                 Knight  => KnightShift,
                 Silver  => SilverShift,
+                Gold    => GoldShift,
                 Bishop  => BishopShift,
                 Rook    => RookShift,
-                Gold    => GoldShift,
                 _       => 0
             };
         }
@@ -116,9 +124,9 @@ namespace Peeper.Logic.Data
                 Lance   => LanceMask,
                 Knight  => KnightMask,
                 Silver  => SilverMask,
+                Gold    => GoldMask,
                 Bishop  => BishopMask,
                 Rook    => RookMask,
-                Gold    => GoldMask,
                 _       => 0
             };
         }

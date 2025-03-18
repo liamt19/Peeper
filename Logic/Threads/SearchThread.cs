@@ -104,8 +104,8 @@ namespace Peeper.Logic.Threads
 
             History = new HistoryTable();
 
-            NodeTable = new ulong[DropSourceSquare + 1][];
-            for (int sq = 0; sq < DropSourceSquare + 1; sq++)
+            NodeTable = new ulong[SquareNB][];
+            for (int sq = 0; sq < SquareNB; sq++)
             {
                 NodeTable[sq] = new ulong[SquareNB];
             }

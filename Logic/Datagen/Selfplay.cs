@@ -1,8 +1,7 @@
 ﻿
 #pragma warning disable CS8500 // This takes the address of, gets the size of, or declares a pointer to a managed type
 
-//#define DBG
-//#define WRITE_PGN
+#define DBG_PRINT
 
 using System.Runtime.InteropServices;
 
@@ -73,6 +72,11 @@ namespace Peeper.Logic.Datagen
 
                     bestMove = pool.GetBestThread().RootMoves[0].Move;
                     bestMoveScore = pool.GetBestThread().RootMoves[0].Score;
+
+                    if (bestMoveScore == -ScoreInfinite)
+                    {
+                        int z = 0;
+                    }
 
 #if DBG_PRINT
                     debugStreamWriter.Write($"{pos.GetSFen()}\t{bestMove} {bestMoveScore}\t");

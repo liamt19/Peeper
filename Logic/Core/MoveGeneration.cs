@@ -33,7 +33,7 @@ namespace Peeper.Logic.Core
             while (promotions != 0)
             {
                 int to = PopLSB(&promotions);
-                list.AddMove(new(to - up, to, Move.FlagPromotion));
+                list.AddMove(Move.MakePromo(to - up, to));
             }
         }
 
@@ -73,7 +73,7 @@ namespace Peeper.Logic.Core
                 while (promos != 0)
                 {
                     int to = PopLSB(&promos);
-                    list.AddMove(new(sq, to, Move.FlagPromotion));
+                    list.AddMove(Move.MakePromo(sq, to));
                 }
             }
         }
@@ -90,12 +90,11 @@ namespace Peeper.Logic.Core
                 if (n == 0)
                     continue;
 
-                var dropFlag = Move.DropFlagFor(type);
                 var dropMask = AllMask & ~(occ | ForcedPromotionSquares(stm, type));
                 while (dropMask != 0)
                 {
                     int to = PopLSB(&dropMask);
-                    list.AddMove(new(DropSourceSquare, to, dropFlag));
+                    list.AddMove(Move.MakeDrop(type, to));
                 }
             }
         }
@@ -105,7 +104,7 @@ namespace Peeper.Logic.Core
         {
             AddPawnMoves(ref list);
 
-            for (int type = Lance; type < PieceNB; type++)
+            for (int type = Pawn + 1; type < PieceNB; type++)
             {
                 AddNormalMoves(ref list, type);
             }
@@ -118,7 +117,7 @@ namespace Peeper.Logic.Core
             Bitmask targets = bb.Colors[Not(ToMove)];
 
             AddPawnMoves(ref list, targets);
-            for (int type = Lance; type < PieceNB; type++)
+            for (int type = Pawn + 1; type < PieceNB; type++)
             {
                 AddNormalMoves(ref list, type, targets);
             }

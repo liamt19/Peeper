@@ -40,6 +40,7 @@ namespace Peeper.Logic.Core
         [MethodImpl(Inline)]
         public int GetPieceAtIndex(int sq)
         {
+            Assert(sq < SquareNB);
             return Mailbox[sq];
         }
 

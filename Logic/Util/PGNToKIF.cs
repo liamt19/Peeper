@@ -81,7 +81,7 @@ namespace Peeper.Logic.Util
 
             Move blackMove = Move.Null;
             Move whiteMove = Move.Null;
-            int priorSquare = DropSourceSquare + 1;
+            int priorSquare = SquareNB + 1;
             int printNumber = 1;
             for (int fmv = 0; fmv < matches.Count; fmv++)
             {

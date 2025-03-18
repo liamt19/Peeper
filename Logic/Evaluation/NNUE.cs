@@ -221,7 +221,7 @@ namespace Peeper.Logic.Evaluation
             var (moveFrom, moveTo) = m.Unpack();
 
             int us = pos.ToMove;
-            int ourPiece = m.IsDrop ? m.DroppedPiece : bb.GetPieceAtIndex(moveFrom);
+            int ourPiece = pos.MovedPiece(m);
 
             int them = Not(us);
             int theirPiece = bb.GetPieceAtIndex(moveTo);

@@ -148,7 +148,7 @@ namespace Peeper.Logic.Core
 
             var (moveFrom, moveTo) = move.Unpack();
 
-            var ourPiece = move.IsDrop ? move.DroppedPiece : bb.GetPieceAtIndex(moveFrom);
+            var ourPiece = MovedPiece(move);
             var ourColor = ToMove;
 
             var theirPiece = bb.GetPieceAtIndex(moveTo);
@@ -159,6 +159,7 @@ namespace Peeper.Logic.Core
             Assert(theirPiece == None || ourColor != bb.GetColorAtIndex(moveTo), 
                 $"Move {move} in '{GetSFen()}' captures our own {PieceToString(theirPiece)} on {SquareToString(moveTo)}");
 
+            Assert(!(move.IsDrop && move.IsPromotion));
 
             if (ourPiece == King)
             {
@@ -269,7 +270,7 @@ namespace Peeper.Logic.Core
         public bool IsLegal(Move move, int ourKing, int theirKing, Bitmask pinnedPieces)
         {
             var (moveFrom, moveTo) = move.Unpack();
-            int type = bb.GetPieceAtIndex(moveFrom);
+            int type = MovedPiece(move);
 
             if (type == None)
             {
@@ -496,7 +497,7 @@ namespace Peeper.Logic.Core
                     int color = SFenToColor(c);
                     int type = SFenToPiece(c);
 
-                    type += isPromoted ? PromotionNB : 0;
+                    type = isPromoted ? Promote(type) : type;
 
                     bb.AddPiece(color, type, sq);
                     isPromoted = false;
