@@ -219,7 +219,12 @@ namespace Peeper.Logic.Search
                         }
                     }
 
-                    Assert(rmIndex != -1);
+                    if (rmIndex == -1)
+                    {
+                        string rms = string.Join(", ", thisThread.RootMoves.Select(x => x.Move));
+                        FailFast($"Move {m} wasn't in the RootMoves list! [{rms}]");
+                    }
+                    
 
                     RootMove rm = thisThread.RootMoves[rmIndex];
                     rm.AverageScore = (rm.AverageScore == -ScoreInfinite) ? score : ((rm.AverageScore + (score * 2)) / 3);
@@ -355,7 +360,7 @@ namespace Peeper.Logic.Search
         MovesLoop:
 
             MoveList list = new();
-            int size = pos.GenerateCaptures(ref list);
+            int size = pos.GenerateQSearch(ref list);
             MoveOrdering.AssignQSearchScores(pos, ref list, ttMove);
 
             for (int i = 0; i < size; i++)

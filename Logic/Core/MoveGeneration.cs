@@ -163,5 +163,10 @@ namespace Peeper.Logic.Core
             AddCaptures(ref list);
             return list.Size;
         }
+
+        public int GenerateQSearch(ref MoveList list)
+        {
+            return Checked ? GeneratePseudoLegal(ref list) : GenerateCaptures(ref list);
+        }
     }
 }

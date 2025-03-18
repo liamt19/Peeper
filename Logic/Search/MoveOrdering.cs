@@ -56,7 +56,7 @@ namespace Peeper.Logic.Search
                 {
                     sm.Score = int.MaxValue - 1000000;
                 }
-                else
+                else if (captured != None)
                 {
                     //  Approximately mvv lva.
                     sm.Score = (GetHandValue(captured) * 10) - GetHandValue(thisPiece);
