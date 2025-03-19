@@ -65,7 +65,7 @@ namespace Peeper
                 }
                 else if (cmd.EqualsIgnoreCase("stop"))
                 {
-                    GlobalSearchPool.StopThreads = true;
+                    GlobalSearchPool.StopAllThreads();
                 }
                 else if (cmd.EqualsIgnoreCase("perft"))
                 {
@@ -131,10 +131,10 @@ namespace Peeper
             }
 
             Console.CancelKeyPress += delegate (object? sender, ConsoleCancelEventArgs e) {
-                if (!GlobalSearchPool.StopThreads)
+                if (!GlobalSearchPool.MainThread.ShouldStop())
                 {
                     //  If a search is ongoing, stop it instead of closing the console.
-                    GlobalSearchPool.StopThreads = true;
+                    GlobalSearchPool.StopAllThreads();
                     e.Cancel = true;
                 }
 

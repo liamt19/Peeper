@@ -6,6 +6,7 @@ using Peeper.Logic.Threads;
 using Peeper.Logic.Transposition;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Xml.Linq;
 
 using static Peeper.Logic.Transposition.TTEntry;
@@ -22,22 +23,11 @@ namespace Peeper.Logic.Search
             SearchThread thisThread = pos.Owner;
             TranspositionTable TT = thisThread.TT;
 
-            if (!isRoot && thisThread.IsMain)
-            {
-                if (thisThread.NodeLimitReached())
-                    thisThread.SetStop();
-
-                if (thisThread.Nodes % 1024 == 0 && TimeManager.CheckHardTime())
-                    thisThread.SetStop();
-
-                if (thisThread.ShouldStop())
-                    return ScoreDraw;
-            }
+            if (thisThread.IsMain)
+                thisThread.CheckLimits();
 
             if (depth == 0)
-            {
                 return QSearch<NodeType>(pos, ss, alpha, beta);
-            }
 
             thisThread.Nodes++;
 
@@ -60,7 +50,7 @@ namespace Peeper.Logic.Search
 
             if (!isRoot)
             {
-                if (thisThread.AssocPool.StopThreads || ss->Ply >= MaxSearchStackPly - 1)
+                if (thisThread.ShouldStop() || ss->Ply >= MaxSearchStackPly - 1)
                 {
                     return pos.Checked ? ScoreDraw : NNUE.GetEvaluation(pos);
                 }
@@ -217,7 +207,7 @@ namespace Peeper.Logic.Search
                     thisThread.NodeTable[moveFrom][moveTo] += thisThread.Nodes - prevNodes;
                 }
 
-                if (thisThread.AssocPool.StopThreads)
+                if (thisThread.ShouldStop())
                 {
                     return ScoreDraw;
                 }
@@ -309,17 +299,8 @@ namespace Peeper.Logic.Search
 
             SearchThread thisThread = pos.Owner;
 
-            if (thisThread.IsMain)
-            {
-                if (thisThread.NodeLimitReached())
-                    thisThread.SetStop();
-
-                if (thisThread.Nodes % 1024 == 0 && TimeManager.CheckHardTime())
-                    thisThread.SetStop();
-
-                if (thisThread.ShouldStop())
-                    return ScoreDraw;
-            }
+            if (thisThread.IsMain && thisThread.RootDepth > 2 && thisThread.ShouldStop())
+                return 0;
 
             thisThread.Nodes++;
 

@@ -12,6 +12,7 @@ using Peeper.Logic.Threads;
 using Peeper.Logic.Search;
 using Peeper.Logic.Evaluation;
 using Peeper.Logic.Data;
+using Peeper.Logic.Transposition;
 
 
 namespace Peeper.Logic.Datagen
@@ -28,20 +29,21 @@ namespace Peeper.Logic.Datagen
 
             TimeManager.RemoveHardLimit();
 
-            SearchThreadPool pool = new SearchThreadPool(1);
-            Position pos = new Position(owner: pool.MainThread);
+            TranspositionTable tt = new(HashSize);
+            SearchThread thread = new(0) { TT = tt, IsDatagen = true };
+            Position pos = new(owner: thread);
             ref Bitboard bb = ref pos.bb;
 
             Random rand = ThreadRNG.Value;
             MoveList legalMoves = new();
 
-            Move bestMove = Move.Null;
-            int bestMoveScore = 0;
+            Move move = Move.Null;
+            int score = 0;
 
             string fName = $"{softNodeLimit / 1000}k_{depthLimit}d_{threadID}.bin";
 
 #if DBG_PRINT
-            using var debugStream = File.OpenWrite("dbg.txt");
+            using var debugStream = File.Open("dbg.txt", FileMode.Append, FileAccess.Write, FileShare.Read);
             using var debugStreamWriter = new StreamWriter(debugStream);
 #endif
             using FileStream bfeOutputFileStream = File.Open(fName, FileMode.OpenOrCreate);
@@ -58,7 +60,7 @@ namespace Peeper.Logic.Datagen
 
             for (ulong gameNum = 0; gameNum < gamesToRun; gameNum++)
             {
-                GetStartPos(pool, pos, ref prelimInfo);
+                GetStartPos(thread, pos, ref prelimInfo);
 
                 GameResult result = GameResult.Draw;
                 int toWrite = 0;
@@ -67,28 +69,26 @@ namespace Peeper.Logic.Datagen
 
                 while (true)
                 {
-                    pool.StartSearch(pos, ref info);
-                    pool.BlockCallerUntilFinished();
+                    DGSetupThread(pos, thread);
+                    thread.Search(ref info);
 
-                    bestMove = pool.GetBestThread().RootMoves[0].Move;
-                    bestMoveScore = pool.GetBestThread().RootMoves[0].Score;
+                    move = thread.RootMoves[0].Move;
+                    score = thread.RootMoves[0].Score;
 
-                    if (bestMoveScore == -ScoreInfinite)
-                    {
-                        int z = 0;
-                    }
+                    score *= (pos.ToMove == Black ? 1 : -1);
 
 #if DBG_PRINT
-                    debugStreamWriter.Write($"{pos.GetSFen()}\t{bestMove} {bestMoveScore}\t");
+                    debugStreamWriter.Write($"{pos.GetSFen()}\t{move} {score}\t");
 #endif
 
-                    bestMoveScore *= (pos.ToMove == White ? -1 : 1);
-
-                    if (Math.Abs(bestMoveScore) >= AdjudicateScore)
+                    if (Math.Abs(score) >= AdjudicateScore)
                     {
                         if (++adjudicationCounter > AdjudicateMoves)
                         {
-                            result = (bestMoveScore > 0) ? GameResult.BlackWin : GameResult.WhiteWin;
+                            result = (score > 0) ? GameResult.BlackWin : GameResult.WhiteWin;
+#if DBG_PRINT
+                            debugStreamWriter.WriteLine($"Adjudicated!");
+#endif
                             break;
                         }
                     }
@@ -97,15 +97,15 @@ namespace Peeper.Logic.Datagen
 
 
                     bool inCheck = pos.Checked;
-                    bool bmCap = pos.IsCapture(bestMove);
-                    bool badScore = Math.Abs(bestMoveScore) > MaxFilteringScore;
+                    bool bmCap = pos.IsCapture(move);
+                    bool badScore = Math.Abs(score) > MaxFilteringScore;
                     bool isOk = !(inCheck || bmCap || badScore);
                     if (isOk)
                     {
 #if DBG_PRINT
                         debugStreamWriter.WriteLine();
 #endif
-                        datapoints[toWrite].Fill(pos, bestMove, bestMoveScore);
+                        datapoints[toWrite].Fill(pos, move, score);
                         toWrite++;
                     }
                     else
@@ -116,7 +116,7 @@ namespace Peeper.Logic.Datagen
                         filtered++;
                     }
 
-                    pos.MakeMove(bestMove);
+                    pos.MakeMove(move);
 
                     if (pos.GenerateLegal(ref legalMoves) == 0)
                     {
@@ -128,9 +128,9 @@ namespace Peeper.Logic.Datagen
                     }
                     else if (toWrite == WritableDataLimit - 1)
                     {
-                        result = bestMoveScore >  800 ? GameResult.BlackWin :
-                                 bestMoveScore < -800 ? GameResult.WhiteWin :
-                                                        GameResult.Draw;
+                        result = score >  800 ? GameResult.BlackWin :
+                                 score < -800 ? GameResult.WhiteWin :
+                                                GameResult.Draw;
                         break;
                     }
                 }
@@ -153,15 +153,17 @@ namespace Peeper.Logic.Datagen
         }
 
 
-        private static void GetStartPos(SearchThreadPool pool, Position pos, ref SearchInformation prelim)
+        private static void GetStartPos(SearchThread thread, Position pos, ref SearchInformation prelim)
         {
             Random rand = ThreadRNG.Value;
             MoveList legalMoves = new();
 
             while (true)
             {
-                pool.TTable.Clear();
-                pool.Clear();
+                thread.SetStop(false);
+                thread.TT.Clear();
+                thread.TT.TTUpdate();
+                thread.History.Clear();
 
             Retry:
 
@@ -181,10 +183,10 @@ namespace Peeper.Logic.Datagen
                 if (pos.GenerateLegal(ref legalMoves) == 0)
                     continue;
 
-                pool.StartSearch(pos, ref prelim);
-                pool.BlockCallerUntilFinished();
+                DGSetupThread(pos, thread);
+                thread.Search(ref prelim);
 
-                if (Math.Abs(pool.GetBestThread().RootMoves[0].Score) >= MaxOpeningScore)
+                if (Math.Abs(thread.RootMoves[0].Score) >= MaxOpeningScore)
                     continue;
 
                 return;
@@ -224,6 +226,20 @@ namespace Peeper.Logic.Datagen
             pos.SetState();
 
             NNUE.RefreshAccumulator(pos);
+        }
+
+        private static void DGSetupThread(Position pos, SearchThread td)
+        {
+            td.Reset();
+
+            MoveList list = new();
+            int size = pos.GenerateLegal(ref list);
+
+            td.RootMoves.Clear();
+            for (int j = 0; j < size; j++)
+                td.RootMoves.Add(new RootMove(list[j].Move));
+
+            td.RootPosition.LoadFromSFen(pos.GetSFen());
         }
 
 

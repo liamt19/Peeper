@@ -72,8 +72,6 @@ namespace Peeper.Logic.USI
                 }
                 else if (cmd == "go")
                 {
-                    GlobalSearchPool.StopThreads = false;
-
                     if (info.SearchActive)
                         return;
 
@@ -82,7 +80,7 @@ namespace Peeper.Logic.USI
                 }
                 else if (cmd == "stop")
                 {
-                    GlobalSearchPool.StopThreads = true;
+                    GlobalSearchPool.StopAllThreads();
                 }
                 else if (cmd == "leave")
                 {

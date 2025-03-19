@@ -28,6 +28,7 @@ namespace Peeper.Logic.Threads
         private bool _Disposed = false;
 
         public ulong Nodes;
+        public ulong HardNodeLimit;
 
         public int ThreadIdx;
         public int PVIndex;
@@ -39,27 +40,29 @@ namespace Peeper.Logic.Threads
         public bool Searching;
         public bool Quit;
         public readonly bool IsMain = false;
-
-        public readonly Position RootPosition;
+        public bool StopSearching;
+        public bool IsDatagen { get; init; } = false;
 
         public List<RootMove> RootMoves = new List<RootMove>(64);
 
-        public HistoryTable History;
-
-        public ulong[][] NodeTable;
-
+        public readonly Position RootPosition;
         public SearchThreadPool AssocPool;
         public TranspositionTable TT;
 
-        private Thread _SysThread;
-
+        private readonly Thread _SysThread;
         private readonly object _Mutex;
-
         private readonly ConditionVariable _SearchCond;
+        private readonly Barrier _InitBarrier = new Barrier(2);
 
-        private Barrier _InitBarrier = new Barrier(2);
+        public HistoryTable History;
+        public ulong[][] NodeTable;
 
         public Move CurrentMove => RootMoves[PVIndex].Move;
+        public string? FriendlyName => _SysThread.Name;
+        
+        public void SetStop(bool flag = true) => StopSearching = flag;
+        public bool ShouldStop() => StopSearching;
+
 
         public SearchThread(int idx)
         {
@@ -91,13 +94,6 @@ namespace Peeper.Logic.Threads
         }
 
 
-        public string? FriendlyName => _SysThread.Name;
-        public ulong HardNodeLimit => AssocPool.SharedInfo.HardNodeLimit;
-
-
-        /// <summary>
-        /// Initializes this thread's Accumulators and history heuristic data.
-        /// </summary>
         public void ThreadInit()
         {
             Quit = false;
@@ -120,12 +116,7 @@ namespace Peeper.Logic.Threads
         }
 
 
-
-        /// <summary>
-        /// Sets this thread's <see cref="Searching"/> variable to true, which will cause the thread in the IdleLoop to
-        /// call the search function once it wakes up.
-        /// </summary>
-        public void PrepareToSearch()
+        public void WakeUp()
         {
             Monitor.Enter(_Mutex);
             Searching = true;
@@ -135,10 +126,6 @@ namespace Peeper.Logic.Threads
         }
 
 
-        /// <summary>
-        /// Blocks the calling thread until this SearchThread has exited its search call 
-        /// and has returned to the beginning of its IdleLoop.
-        /// </summary>
         public void WaitForThreadFinished()
         {
             if (_Mutex == null)
@@ -166,10 +153,6 @@ namespace Peeper.Logic.Threads
         }
 
 
-        /// <summary>
-        /// The main loop that threads will be in while they are not currently searching.
-        /// Threads enter here after they have been initialized and do not leave until their thread is terminated.
-        /// </summary>
         public void IdleLoop()
         {
             //  Let the main thread know that this thread is initialized and ready to go.
@@ -208,30 +191,23 @@ namespace Peeper.Logic.Threads
                 }
                 else
                 {
-                    Search();
+                    Search(ref AssocPool.SharedInfo);
                 }
             }
         }
 
 
-
-        /// <summary>
-        /// Called by the MainThread after it is woken up by a call to <see cref="SearchThreadPool.StartSearch"/>.
-        /// The MainThread will wake up the other threads and notify them to begin searching, and then start searching itself. 
-        /// Once the MainThread finishes searching, it will wait until all other threads have finished as well, and will then 
-        /// send the search results as output to the UCI.
-        /// </summary>
         public void MainThreadSearch()
         {
             TT.TTUpdate();  //  Age the TT
 
-            AssocPool.StartThreads();   //  Start other threads (if any)
-            this.Search();              //  Make this thread begin searching
+            AssocPool.AwakenHelperThreads();
+            this.Search(ref AssocPool.SharedInfo);
 
-            while (!AssocPool.StopThreads && AssocPool.SharedInfo.IsInfinite) { }
+            while (!ShouldStop() && AssocPool.SharedInfo.IsInfinite) { }
 
             //  When the main thread is done, prevent the other threads from searching any deeper
-            AssocPool.StopThreads = true;
+            AssocPool.StopAllThreads();
 
             //  Wait for the other threads to return
             AssocPool.WaitForSearchFinished();
@@ -254,7 +230,7 @@ namespace Peeper.Logic.Threads
         /// <summary>
         /// Main deepening loop for threads. This is essentially the same as the old "StartSearching" method that was used.
         /// </summary>
-        public void Search()
+        public void Search(ref SearchInformation _info)
         {
             SearchStack* _ss = stackalloc SearchStack[MaxPly];
             SearchStack* ss = _ss + 10;
@@ -271,10 +247,10 @@ namespace Peeper.Logic.Threads
                 Array.Clear(NodeTable[sq]);
             }
 
-            //  Create a copy of the AssocPool's root SearchInformation instance.
-            SearchInformation info = AssocPool.SharedInfo;
-
+            //  Create a copy here
+            SearchInformation info = _info;
             info.Position = RootPosition;
+            HardNodeLimit = info.HardNodeLimit;
 
             int multiPV = Math.Min(SearchOptions.MultiPV, RootMoves.Count);
 
@@ -290,7 +266,7 @@ namespace Peeper.Logic.Threads
                 if (IsMain && RootDepth > info.DepthLimit)
                     break;
 
-                if (AssocPool.StopThreads)
+                if (ShouldStop())
                     break;
 
                 foreach (RootMove rm in RootMoves)
@@ -302,7 +278,7 @@ namespace Peeper.Logic.Threads
 
                 for (PVIndex = 0; PVIndex < multiPV; PVIndex++)
                 {
-                    if (AssocPool.StopThreads)
+                    if (ShouldStop())
                         break;
 
                     int alpha = AlphaStart;
@@ -322,11 +298,11 @@ namespace Peeper.Logic.Threads
 
                     while (true)
                     {
-                        score = Logic.Search.Searches.Negamax<RootNode>(info.Position, ss, alpha, beta, Math.Max(1, usedDepth));
+                        score = Searches.Negamax<RootNode>(info.Position, ss, alpha, beta, RootDepth);
 
                         StableSort(RootMoves, PVIndex);
 
-                        if (AssocPool.StopThreads)
+                        if (ShouldStop())
                             break;
 
 #if NO
@@ -352,7 +328,7 @@ namespace Peeper.Logic.Threads
 
                     StableSort(RootMoves, 0, PVIndex + 1);
 
-                    if (IsMain && (AssocPool.StopThreads || PVIndex == multiPV - 1))
+                    if (IsMain && (ShouldStop() || PVIndex == multiPV - 1))
                     {
                         info.OnDepthFinish?.Invoke(ref info);
                     }
@@ -361,7 +337,7 @@ namespace Peeper.Logic.Threads
                 if (!IsMain)
                     continue;
 
-                if (AssocPool.StopThreads)
+                if (ShouldStop())
                 {
                     //  If we received a stop command or hit the hard time limit, our RootMoves may not have been filled in properly.
                     //  In that case, we replace the current bestmove with the last depth's bestmove
@@ -411,19 +387,19 @@ namespace Peeper.Logic.Threads
                     break;
                 }
 
-                if (!AssocPool.StopThreads)
+                if (!ShouldStop())
                 {
                     CompletedDepth = RootDepth;
                 }
             }
 
-            if (IsMain && RootDepth >= MaxDepth && info.HasNodeLimit && !AssocPool.StopThreads)
+            if (IsMain && RootDepth >= MaxDepth && info.HasNodeLimit && !ShouldStop())
             {
                 //  If this was a "go nodes x" command, it is possible for the main thread to hit the
                 //  maximum depth before hitting the requested node count (causing an infinite wait).
 
                 //  If this is the case, and we haven't been told to stop searching, then we need to stop now.
-                AssocPool.StopThreads = true;
+                SetStop();
             }
 
             for (int i = -10; i < MaxSearchStackPly; i++)
@@ -464,6 +440,25 @@ namespace Peeper.Logic.Threads
             return false;
         }
 
+
+        public void CheckLimits()
+        {
+            if (IsDatagen)
+            {
+                if (Nodes >= HardNodeLimit && RootDepth > 2)
+                    SetStop();
+            }
+            else
+            {
+                if (NodeLimitReached())
+                    SetStop();
+
+                if (Nodes % 1024 == 0 && TimeManager.CheckHardTime())
+                    SetStop();
+            }
+        }
+
+
         public bool NodeLimitReached()
         {
             if (SearchOptions.Threads == 1)
@@ -478,9 +473,12 @@ namespace Peeper.Logic.Threads
             return false;
         }
 
-        public void SetStop() => AssocPool.StopThreads = true;
-        public bool ShouldStop() => AssocPool.StopThreads;
 
+        public void Reset()
+        {
+            Nodes = 0;
+            PVIndex = RootDepth = SelDepth = CompletedDepth = NMPPly = 0;
+        }
 
         /// <summary>
         /// Frees up the memory that was allocated to this SearchThread.
@@ -499,7 +497,7 @@ namespace Peeper.Logic.Threads
                 //  Set quit to True, and pulse the condition to allow the thread in IdleLoop to exit.
                 Quit = true;
 
-                PrepareToSearch();
+                WakeUp();
             }
 
 
