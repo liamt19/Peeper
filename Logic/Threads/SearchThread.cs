@@ -67,10 +67,7 @@ namespace Peeper.Logic.Threads
         public SearchThread(int idx)
         {
             ThreadIdx = idx;
-            if (ThreadIdx == 0)
-            {
-                IsMain = true;
-            }
+            IsMain = (ThreadIdx == 0);
 
             _Mutex = "Mut" + ThreadIdx;
             _SearchCond = new ConditionVariable();
@@ -106,10 +103,10 @@ namespace Peeper.Logic.Threads
                 NodeTable[sq] = new ulong[SquareNB];
             }
 
-            _SysThread.Name = "SearchThread " + ThreadIdx + ", ID " + Environment.CurrentManagedThreadId;
+            _SysThread.Name = $"SearchThread {ThreadIdx}, ID {Environment.CurrentManagedThreadId}";
             if (IsMain)
             {
-                _SysThread.Name = "(MAIN)Thread " + ThreadIdx + ", ID " + Environment.CurrentManagedThreadId;
+                _SysThread.Name = $"MainSearchThread {ThreadIdx}, ID {Environment.CurrentManagedThreadId}";
             }
 
             IdleLoop();

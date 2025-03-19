@@ -7,7 +7,6 @@ namespace Peeper.Logic.Datagen
     {
         private static readonly ConcurrentDictionary<int, ulong> ThreadGameTotals = new ConcurrentDictionary<int, ulong>();
         private static readonly ConcurrentDictionary<int, ulong> ThreadPositionTotals = new ConcurrentDictionary<int, ulong>();
-        private static readonly ConcurrentDictionary<int, double> ThreadNPS = new ConcurrentDictionary<int, double>();
         private static readonly CancellationTokenSource TokenSource = new CancellationTokenSource();
 
         public static void StartMonitoring()
@@ -26,6 +25,8 @@ namespace Peeper.Logic.Datagen
             Console.WriteLine("                   games       positions      pos/sec");
             (int _, int top) = Console.GetCursorPosition();
 
+            Stopwatch sw = Stopwatch.StartNew();
+
             while (!token.IsCancellationRequested)
             {
                 Console.SetCursorPosition(0, top);
@@ -43,7 +44,7 @@ namespace Peeper.Logic.Datagen
                     int id = kvp.Key;
                     var games = kvp.Value;
                     var positions = ThreadPositionTotals[id];
-                    var nps = ThreadNPS[id];
+                    var nps = positions / sw.Elapsed.TotalSeconds;
 
                     Console.WriteLine($"Thread {id,3}: {games,12} {positions,15:N0} {nps,12:N2}");
 
@@ -59,11 +60,10 @@ namespace Peeper.Logic.Datagen
             }
         }
 
-        public static void ReportProgress(int threadId, ulong gameNum, ulong totalPositions, double nps)
+        public static void ReportProgress(int threadId, ulong gameNum, ulong totalPositions)
         {
             ThreadGameTotals[threadId] = gameNum;
             ThreadPositionTotals[threadId] = totalPositions;
-            ThreadNPS[threadId] = nps;
         }
     }
 }

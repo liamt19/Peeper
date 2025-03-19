@@ -1,7 +1,7 @@
 ﻿
 #pragma warning disable CS8500 // This takes the address of, gets the size of, or declares a pointer to a managed type
 
-#define DBG_PRINT
+//#define DBG_PRINT
 
 using System.Runtime.InteropServices;
 
@@ -31,7 +31,7 @@ namespace Peeper.Logic.Datagen
 
             TranspositionTable tt = new(HashSize);
             SearchThread thread = new(0) { TT = tt, IsDatagen = true };
-            Position pos = new(owner: thread);
+            Position pos = thread.RootPosition;
             ref Bitboard bb = ref pos.bb;
 
             Random rand = ThreadRNG.Value;
@@ -43,10 +43,10 @@ namespace Peeper.Logic.Datagen
             string fName = $"{softNodeLimit / 1000}k_{depthLimit}d_{threadID}.bin";
 
 #if DBG_PRINT
-            using var debugStream = File.Open("dbg.txt", FileMode.Append, FileAccess.Write, FileShare.Read);
+            using var debugStream = File.Open($"dbg_{threadID}.txt", FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.ReadWrite);
             using var debugStreamWriter = new StreamWriter(debugStream);
 #endif
-            using FileStream bfeOutputFileStream = File.Open(fName, FileMode.OpenOrCreate);
+            using FileStream bfeOutputFileStream = File.Open(fName, FileMode.OpenOrCreate, FileAccess.Write, FileShare.Read);
             using BinaryWriter outputWriter = new BinaryWriter(bfeOutputFileStream);
             Span<PeeperDataFormat> datapoints = stackalloc PeeperDataFormat[WritableDataLimit];
 
@@ -55,8 +55,6 @@ namespace Peeper.Logic.Datagen
 
             SearchInformation info = SearchInformation.DatagenStandard(pos, softNodeLimit, (int)depthLimit);
             SearchInformation prelimInfo = SearchInformation.DatagenPrelim(pos, softNodeLimit, (int)depthLimit);
-
-            Stopwatch sw = Stopwatch.StartNew();
 
             for (ulong gameNum = 0; gameNum < gamesToRun; gameNum++)
             {
@@ -143,10 +141,7 @@ namespace Peeper.Logic.Datagen
                 totalBadPositions += (uint)filtered;
                 totalGoodPositions += (uint)toWrite;
 
-                var goodPerSec = totalGoodPositions / sw.Elapsed.TotalSeconds;
-                var totalPerSec = (totalGoodPositions + totalBadPositions) / sw.Elapsed.TotalSeconds;
-
-                ProgressBroker.ReportProgress(threadID, gameNum, totalGoodPositions, goodPerSec);
+                ProgressBroker.ReportProgress(threadID, gameNum, totalGoodPositions);
                 AddResultsAndWrite(datapoints[..toWrite], result, outputWriter);
             }
 
@@ -164,9 +159,7 @@ namespace Peeper.Logic.Datagen
                 thread.TT.Clear();
                 thread.TT.TTUpdate();
                 thread.History.Clear();
-
             Retry:
-
                 pos.LoadFromSFen(InitialFEN);
 
                 int randMoveCount = rand.Next(MinOpeningPly, MaxOpeningPly + 1);
@@ -185,7 +178,6 @@ namespace Peeper.Logic.Datagen
 
                 DGSetupThread(pos, thread);
                 thread.Search(ref prelim);
-
                 if (Math.Abs(thread.RootMoves[0].Score) >= MaxOpeningScore)
                     continue;
 
