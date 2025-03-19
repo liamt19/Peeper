@@ -137,5 +137,10 @@ namespace Peeper.Logic.Protocols
         {
             return "isready";
         }
+
+        public (string response, bool abort) HandleImpasse()
+        {
+            return ("bestmove win", true);
+        }
     }
 }

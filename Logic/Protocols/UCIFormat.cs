@@ -171,5 +171,10 @@ namespace Peeper.Logic.Protocols
         {
             return "isready";
         }
+
+        public (string response, bool abort) HandleImpasse()
+        {
+            return ("info string root is kings win", false);
+        }
     }
 }

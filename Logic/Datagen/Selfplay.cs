@@ -126,11 +126,6 @@ namespace Peeper.Logic.Datagen
                         
                         break;
                     }
-                    else if (pos.IsDraw())
-                    {
-                        result = GameResult.Draw;
-                        break;
-                    }
                     else if (toWrite == WritableDataLimit - 1)
                     {
                         result = bestMoveScore >  800 ? GameResult.BlackWin :

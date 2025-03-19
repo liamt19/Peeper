@@ -46,5 +46,7 @@ namespace Peeper.Logic.Protocols
         public string GetReadyResponse();
         public string SetupNewGameCommand();
         public string RespondReadyCommand();
+
+        public (string response, bool abort) HandleImpasse();
     }
 }

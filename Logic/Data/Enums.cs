@@ -136,6 +136,13 @@ namespace Peeper.Logic.Data
     public struct NonPVNode : SearchNodeType { }
     public struct RootNode : SearchNodeType { }
 
+    public enum Sennichite
+    {
+        None,
+        Draw,
+        Win,
+    };
+
     public enum TTNodeType
     {
         Invalid,
