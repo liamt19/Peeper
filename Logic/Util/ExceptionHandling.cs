@@ -27,6 +27,11 @@ namespace Peeper.Logic.Util
 #endif
         }
 
+        public static void FailFast(string? message = null)
+        {
+            Environment.FailFast(message + Environment.NewLine);
+        }
+
         public static void CurrentDomain_UnhandledException(object sender, UnhandledExceptionEventArgs args)
         {
             Exception e = (Exception)args.ExceptionObject;

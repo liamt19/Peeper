@@ -26,6 +26,7 @@ namespace Peeper.Logic.Data
         }
 
         public void Resize(int newSize) => Size = newSize;
+        public void Clear() => Size = 0;
 
         public Span<ScoredMove> ToSpan()
         {

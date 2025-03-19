@@ -20,6 +20,7 @@ namespace Peeper.Logic.Search
         public static double GetSearchTime() => TotalSearchTime.ElapsedMilliseconds;
 
 
+        public static void RemoveHardLimit() => HardTimeLimit = MaximumSearchTime;
         public static void SetHardLimit(int movetime)
         {
             HardTimeLimit = movetime;

@@ -1,6 +1,7 @@
 ﻿
 #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
 
+using Peeper.Logic.Datagen;
 using Peeper.Logic.Evaluation;
 using Peeper.Logic.Search;
 using Peeper.Logic.Threads;
@@ -98,6 +99,11 @@ namespace Peeper
                 else if (input.EqualsIgnoreCase("pgn"))
                 {
                     PGNToKIF.ParseFromSTDIn();
+                }
+                else if (input.StartsWith("datagen"))
+                {
+                    var splits = input.ToLower().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                    HandleDatagenCommand(splits);
                 }
                 else
                 {
@@ -241,6 +247,46 @@ namespace Peeper
             MoveList list = new();
             pos.GenerateLegal(ref list);
             Log(list.StringifyByType(pos.bb));
+        }
+
+        private static void HandleDatagenCommand(string[] args)
+        {
+            ulong nodes = DatagenParameters.SoftNodeLimit;
+            ulong depth = DatagenParameters.DepthLimit;
+            ulong numGames = 1000000;
+            ulong threads = 1;
+
+            args = args.Skip(1).ToArray();
+
+            if (ulong.TryParse(args.Where(x => x.EndsWith('n')).FirstOrDefault()?[..^1], out ulong selNodeLimit)) nodes = selNodeLimit;
+            if (ulong.TryParse(args.Where(x => x.EndsWith('d')).FirstOrDefault()?[..^1], out ulong selDepthLimit)) depth = selDepthLimit;
+            if (ulong.TryParse(args.Where(x => x.EndsWith('g')).FirstOrDefault()?[..^1], out ulong selNumGames)) numGames = selNumGames;
+            if (ulong.TryParse(args.Where(x => x.EndsWith('t')).FirstOrDefault()?[..^1], out ulong selThreads)) threads = selThreads;
+
+            Log($"Threads:      {threads}");
+            Log($"Games/thread: {numGames:N0}");
+            Log($"Total games:  {numGames * threads:N0}");
+            Log($"Node limit:   {nodes:N0}");
+            Log($"Depth limit:  {depth}");
+            Log($"Hit enter to begin...");
+            _ = Console.ReadLine();
+
+            ProgressBroker.StartMonitoring();
+            if (threads == 1)
+            {
+                //  Let this run on the main thread to allow for debugging
+                Selfplay.RunGames(numGames, 0, softNodeLimit: nodes, depthLimit: depth);
+            }
+            else
+            {
+                Parallel.For(0, (int)threads, new() { MaxDegreeOfParallelism = (int)threads }, (int i) =>
+                {
+                    Selfplay.RunGames(numGames, i, softNodeLimit: nodes, depthLimit: depth);
+                });
+            }
+            ProgressBroker.StopMonitoring();
+
+            Environment.Exit(0);
         }
     }
 }

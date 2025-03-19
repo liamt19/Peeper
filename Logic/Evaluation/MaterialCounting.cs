@@ -3,26 +3,52 @@ namespace Peeper.Logic.Evaluation
 {
     public static unsafe class MaterialCounting
     {
-        private static ReadOnlySpan<int> PieceValues =>
-        [
-            100, 400, 500, 700, 1100, 1300,
-            800, 790, 790, 790, 1500, 1700,
-            800, 
-            0,
-        ];
+        private const int ValuePawn           = 100;
+        private const int ValuePawnPromoted   = 350;
+        private const int ValueLance          = 400;
+        private const int ValueKnight         = 500;
+        private const int ValueLancePromoted  = 790;
+        private const int ValueKnightPromoted = 790;
+        private const int ValueSilver         = 700;
+        private const int ValueSilverPromoted = 790;
+        private const int ValueGold           = 800;
+        private const int ValueBishop         = 1100;
+        private const int ValueRook           = 1300;
+        private const int ValueBishopPromoted = 1500;
+        private const int ValueRookPromoted   = 1700;
 
         //  PieceValue plus a small amount for normal pieces,
         //  and the value of the piece itself + the promoted value for captured promoted pieces.
-        private static ReadOnlySpan<int> HandValues =>
-        [
-            120,  420,  520,  800, 1400, 1600,
-            900, 1190, 1290, 1490, 2600, 3000,
-            750,
-            0,
-        ];
+        public static int GetHandValue(int type)
+        {
+            int v = GetPieceValue(type) + 20;
+            if (IsPromoted(type))
+            {
+                v += GetPieceValue(Promote(type));
+            }
+            return v;
+        }
 
-        public static int GetHandValue(int type) => HandValues[type];
-        public static int GetPieceValue(int type) => PieceValues[type];
+        public static int GetPieceValue(int type)
+        {
+            return type switch
+            {
+                Pawn           => ValuePawn,
+                PawnPromoted   => ValuePawnPromoted,
+                Lance          => ValueLance,
+                Knight         => ValueKnight,
+                LancePromoted  => ValueLancePromoted,
+                KnightPromoted => ValueKnightPromoted,
+                Silver         => ValueSilver,
+                SilverPromoted => ValueSilverPromoted,
+                Gold           => ValueGold,
+                Bishop         => ValueBishop,
+                Rook           => ValueRook,
+                BishopPromoted => ValueBishopPromoted,
+                RookPromoted   => ValueRookPromoted,
+                _ => 0
+            };
+        }
 
 
         public static int GetMaterial(Position pos)

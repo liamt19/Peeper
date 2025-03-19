@@ -66,8 +66,7 @@ namespace Peeper.Logic.Transposition
                 _Depth = (byte)(depth - DepthOffset);
                 _AgePVType = (byte)(age | ((isPV ? 1u : 0u) << 2) | (uint)nodeType);
 
-                Assert(score == ScoreNone || (score <= ScoreMate && score >= -ScoreMate),
-                    $"WARN the score {score} is outside of bounds for normal TT entries!");
+                Assert(score == ScoreNone || (score <= ScoreMate && score >= -ScoreMate), $"WARN the score {score} is outside of bounds for normal TT entries!");
             }
         }
 

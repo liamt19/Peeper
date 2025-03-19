@@ -97,7 +97,6 @@ namespace Peeper.Logic.Evaluation
         private const int COLOR_STRIDE = HAND_STRIDE + HAND_MAX_HELD;
         public static int BoardFeatureIndexSingle(int color, int type, int sq, int perspective)
         {
-            type = PeeperToStoat(type);
             sq = Orient(sq, perspective);
 
             return (((color ^ perspective) * COLOR_STRIDE) + (type * TYPE_STRIDE) + sq) * L1_SIZE;
@@ -110,8 +109,6 @@ namespace Peeper.Logic.Evaluation
 
         public static (int bIdx, int wIdx) BoardFeatureIndex(int color, int type, int sq)
         {
-            type = PeeperToStoat(type);
-
             int bSq = Orient(sq, Black);
             int wSq = Orient(sq, White);
 
@@ -131,32 +128,9 @@ namespace Peeper.Logic.Evaluation
         private const int OOB = int.MaxValue;
         private static ReadOnlySpan<int> HandOffsets => 
         [
-            0, 18, 22, 26, 34, 36,
-            OOB, OOB, OOB, OOB, OOB, OOB,
-            30, OOB
+            0, OOB, 18, 22, OOB, OOB, 26, OOB, 30, 34, 36,
+            OOB, OOB, OOB, OOB,
         ];
 
-        public static int PeeperToStoat(int type)
-        {
-            return type switch
-            {
-                Pawn => 0,
-                PawnPromoted => 1,
-                Lance => 2,
-                Knight => 3,
-                LancePromoted => 4,
-                KnightPromoted => 5,
-                Silver => 6,
-                SilverPromoted => 7,
-                Gold => 8,
-                Bishop => 9,
-                Rook => 10,
-                BishopPromoted => 11,
-                RookPromoted => 12,
-                King => 13,
-                None => 14,
-                _ => 14
-            };
-        }
     }
 }

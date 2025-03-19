@@ -62,6 +62,8 @@ namespace Peeper.Logic.Util
             //  Skip tags
             var movesList = string.Join(" ", lines.SkipWhile(x => !x.StartsWith("1. ")));
 
+            movesList = movesList.TrimEnd();
+
             string gameResult = GetGameResult(movesList);
 
             //  Remove annotations
@@ -81,7 +83,7 @@ namespace Peeper.Logic.Util
 
             Move blackMove = Move.Null;
             Move whiteMove = Move.Null;
-            int priorSquare = DropSourceSquare + 1;
+            int priorSquare = SquareNB + 1;
             int printNumber = 1;
             for (int fmv = 0; fmv < matches.Count; fmv++)
             {
@@ -370,8 +372,6 @@ namespace Peeper.Logic.Util
         private const string IllegalMove = "反則負け";
         private static string GetGameResult(string lines)
         {
-            lines = lines.TrimEnd();
-
             if (lines.Contains("an illegal move"))
                 return $"#{IllegalMove}";
 

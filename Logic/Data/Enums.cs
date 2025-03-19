@@ -17,41 +17,64 @@ namespace Peeper.Logic.Data
     public static class Piece
     {
         public const int Pawn = 0;
-        public const int Lance = 1;
-        public const int Knight = 2;
-        public const int Silver = 3;
-        public const int Bishop = 4;
-        public const int Rook = 5;
-
-        public const int PawnPromoted = 6;
-        public const int LancePromoted = 7;
-        public const int KnightPromoted = 8;
-        public const int SilverPromoted = 9;
-        public const int BishopPromoted = 10;
-        public const int RookPromoted = 11;
-
-        public const int Gold = 12;
+        public const int PawnPromoted = 1;
+        public const int Lance = 2;
+        public const int Knight = 3;
+        public const int LancePromoted = 4;
+        public const int KnightPromoted = 5;
+        public const int Silver = 6;
+        public const int SilverPromoted = 7;
+        public const int Gold = 8;
+        public const int Bishop = 9;
+        public const int Rook = 10;
+        public const int BishopPromoted = 11;
+        public const int RookPromoted = 12;
         public const int King = 13;
 
         public const int None = 14;
         public const int PieceNB = 14;
-        public const int PromotionNB = 6;
-        public const int HandPieceNB = 7;
 
-        public static ReadOnlySpan<int> DroppableTypes => [Pawn, Lance, Knight, Silver, Bishop, Rook, Gold];
+        public static ReadOnlySpan<int> DroppableTypes => [Pawn, Lance, Knight, Silver, Gold, Bishop, Rook];
 
-        public static bool IsPromoted(int type) => type >= PawnPromoted && type <= RookPromoted;
-        public static bool CanPromote(int type) => (type <= Rook);
+        public static bool IsPromoted(int type)
+        {
+            return type is PawnPromoted or LancePromoted or KnightPromoted or SilverPromoted or BishopPromoted or RookPromoted;
+        }
+
+        public static bool CanPromote(int type)
+        {
+            Assert(type != None);
+            return type is Pawn or Lance or Knight or Silver or Bishop or Rook;
+        }
+
         public static int Promote(int type)
         {
             Assert(CanPromote(type));
-            return type + 6;
+            return type switch
+            {
+                Pawn => PawnPromoted,
+                Lance => LancePromoted,
+                Knight => KnightPromoted,
+                Silver => SilverPromoted,
+                Bishop => BishopPromoted,
+                Rook => RookPromoted,
+                _ => None
+            };
         }
 
         public static int Demote(int type)
         {
             Assert(IsPromoted(type));
-            return type - 6;
+            return type switch
+            {
+                PawnPromoted => Pawn,
+                LancePromoted => Lance,
+                KnightPromoted => Knight,
+                SilverPromoted => Silver,
+                BishopPromoted => Bishop,
+                RookPromoted => Rook,
+                _ => None
+            };
         }
 
         public static int DemoteMaybe(int type)
@@ -112,6 +135,13 @@ namespace Peeper.Logic.Data
     public struct PVNode : SearchNodeType { }
     public struct NonPVNode : SearchNodeType { }
     public struct RootNode : SearchNodeType { }
+
+    public enum Sennichite
+    {
+        None,
+        Draw,
+        Win,
+    };
 
     public enum TTNodeType
     {
@@ -220,6 +250,5 @@ namespace Peeper.Logic.Data
         public const int A1 = 80;
 
         public const int SquareNB = 81;
-        public const int DropSourceSquare = 82;
     }
 }

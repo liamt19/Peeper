@@ -40,6 +40,12 @@ namespace Peeper.Logic.Search
         }
 
         [MethodImpl(Inline)]
+        public static int MakeImpasseScore(int ply)
+        {
+            return ScoreMate - ply - 1;
+        }
+
+        [MethodImpl(Inline)]
         public static bool IsScoreMate(int score)
         {
             return Math.Abs(Math.Abs(score) - ScoreMate) < MaxDepth;

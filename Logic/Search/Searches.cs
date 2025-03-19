@@ -22,7 +22,7 @@ namespace Peeper.Logic.Search
             SearchThread thisThread = pos.Owner;
             TranspositionTable TT = thisThread.TT;
 
-            if (thisThread.IsMain)
+            if (!isRoot && thisThread.IsMain)
             {
                 if (thisThread.NodeLimitReached())
                     thisThread.SetStop();
@@ -60,11 +60,6 @@ namespace Peeper.Logic.Search
 
             if (!isRoot)
             {
-                if (pos.IsDraw())
-                {
-                    return MakeDrawScore(thisThread.Nodes);
-                }
-
                 if (thisThread.AssocPool.StopThreads || ss->Ply >= MaxSearchStackPly - 1)
                 {
                     return pos.Checked ? ScoreDraw : NNUE.GetEvaluation(pos);
@@ -159,10 +154,29 @@ namespace Peeper.Logic.Search
                 ss->CurrentMove = m;
                 ss->ContinuationHistory = history.Continuations[0][0][0, 0, 0];
 
+                ulong prevNodes = thisThread.Nodes;
+
                 pos.MakeMove(m);
 
+                var sennichite = pos.CheckSennichite(CuteChessWorkaround);
+                if (sennichite == Sennichite.Win)
+                {
+                    legalMoves--;
+                    pos.UnmakeMove(m);
+                    continue;
+                }
+                else if (sennichite == Sennichite.Draw)
+                {
+                    score = MakeDrawScore(thisThread.Nodes);
+                    goto SkipSearch;
+                }
+                else if (pos.IsWinningImpasse())
+                {
+                    score = MakeImpasseScore(ss->Ply);
+                    goto SkipSearch;
+                }
+
                 playedMoves++;
-                ulong prevNodes = thisThread.Nodes;
 
                 if (isPV)
                     System.Runtime.InteropServices.NativeMemory.Clear((ss + 1)->PV, (nuint)(MaxPly * sizeof(Move)));
@@ -193,7 +207,8 @@ namespace Peeper.Logic.Search
                 }
 
 
-                
+            SkipSearch:
+
                 pos.UnmakeMove(m);
 
                 if (isRoot)
@@ -219,7 +234,12 @@ namespace Peeper.Logic.Search
                         }
                     }
 
-                    Assert(rmIndex != -1);
+                    if (rmIndex == -1)
+                    {
+                        string rms = string.Join(", ", thisThread.RootMoves.Select(x => x.Move));
+                        FailFast($"Move {m} wasn't in the RootMoves list! [{rms}]");
+                    }
+                    
 
                     RootMove rm = thisThread.RootMoves[rmIndex];
                     rm.AverageScore = (rm.AverageScore == -ScoreInfinite) ? score : ((rm.AverageScore + (score * 2)) / 3);
@@ -289,10 +309,16 @@ namespace Peeper.Logic.Search
 
             SearchThread thisThread = pos.Owner;
 
-            if (thisThread.IsMain && thisThread.NodeLimitReached())
+            if (thisThread.IsMain)
             {
-                thisThread.SetStop();
-                return ScoreDraw;
+                if (thisThread.NodeLimitReached())
+                    thisThread.SetStop();
+
+                if (thisThread.Nodes % 1024 == 0 && TimeManager.CheckHardTime())
+                    thisThread.SetStop();
+
+                if (thisThread.ShouldStop())
+                    return ScoreDraw;
             }
 
             thisThread.Nodes++;
@@ -324,9 +350,6 @@ namespace Peeper.Logic.Search
                 thisThread.SelDepth = Math.Max(thisThread.SelDepth, ss->Ply + 1);
             }
 
-            if (pos.IsDraw())
-                return ScoreDraw;
-
             if (ss->Ply >= MaxSearchStackPly - 1)
                 return ss->InCheck ? ScoreDraw : NNUE.GetEvaluation(pos);
 
@@ -355,7 +378,7 @@ namespace Peeper.Logic.Search
         MovesLoop:
 
             MoveList list = new();
-            int size = pos.GenerateCaptures(ref list);
+            int size = pos.GenerateQSearch(ref list);
             MoveOrdering.AssignQSearchScores(pos, ref list, ttMove);
 
             for (int i = 0; i < size; i++)
@@ -373,8 +396,25 @@ namespace Peeper.Logic.Search
                 ss->ContinuationHistory = history.Continuations[0][0][0, 0, 0];
 
                 pos.MakeMove(m);
+
+                var sennichite = pos.CheckSennichite(CuteChessWorkaround);
+                if (sennichite == Sennichite.Win)
+                {
+                    pos.UnmakeMove(m);
+                    continue;
+                }
+                else if (sennichite == Sennichite.Draw)
+                {
+                    score = MakeDrawScore(thisThread.Nodes);
+                    goto SkipSearch;
+                }
+
                 score = -QSearch<NodeType>(pos, ss + 1, -beta, -alpha);
+
+            SkipSearch:
+
                 pos.UnmakeMove(m);
+
 
                 if (score > bestScore)
                 {

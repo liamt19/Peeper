@@ -17,6 +17,7 @@ namespace Peeper.Logic.Core
         public HandBuffer Hands;
         public ulong Hash;
         public fixed int KingSquares[2];
+        public fixed int ConsecutiveChecks[2];
         public int CapturedPiece = None;
         public Accumulator* Accumulator;
 

@@ -86,6 +86,8 @@ namespace Peeper.Logic.Core
         public bool InDoubleCheck => Popcount(State->Checkers) == 2;
         public bool Checked => State->Checkers != 0;
         public ulong Hash => State->Hash;
+        public int ConsecutiveChecks(int color) => State->ConsecutiveChecks[color];
+        public nuint StateDistance => (nuint)(State - StartingState);
 
 
         [MethodImpl(Inline)]
@@ -93,6 +95,9 @@ namespace Peeper.Logic.Core
 
         [MethodImpl(Inline)]
         public int MovedPiece(Move m) => (m.IsDrop ? m.DroppedPiece : bb.GetPieceAtIndex(m.From));
+
+        [MethodImpl(Inline)]
+        public int GetPieceAtIndex(int sq) => bb.GetPieceAtIndex(sq);
 
         public bool TryMakeMove(string moveStr)
         {
@@ -145,7 +150,7 @@ namespace Peeper.Logic.Core
 
             var (moveFrom, moveTo) = move.Unpack();
 
-            var ourPiece = move.IsDrop ? move.DroppedPiece : bb.GetPieceAtIndex(moveFrom);
+            var ourPiece = MovedPiece(move);
             var ourColor = ToMove;
 
             var theirPiece = bb.GetPieceAtIndex(moveTo);
@@ -156,6 +161,7 @@ namespace Peeper.Logic.Core
             Assert(theirPiece == None || ourColor != bb.GetColorAtIndex(moveTo), 
                 $"Move {move} in '{GetSFen()}' captures our own {PieceToString(theirPiece)} on {SquareToString(moveTo)}");
 
+            Assert(!(move.IsDrop && move.IsPromotion));
 
             if (ourPiece == King)
             {
@@ -186,9 +192,13 @@ namespace Peeper.Logic.Core
             ToMove = Not(ToMove);
 
             State->Checkers = bb.AttackersTo(State->KingSquares[theirColor], bb.Occupancy) & bb.Colors[ourColor];
+            
+            if (State->Checkers != 0)
+                State->ConsecutiveChecks[Not(ToMove)]++;
+            else
+                State->ConsecutiveChecks[Not(ToMove)] = 0;
 
             UpdateState();
-            bb.VerifyOK();
         }
 
         public void UnmakeMove(Move move)
@@ -220,7 +230,6 @@ namespace Peeper.Logic.Core
 
             State--;
             ToMove = Not(ToMove);
-            bb.VerifyOK();
         }
 
 
@@ -266,7 +275,7 @@ namespace Peeper.Logic.Core
         public bool IsLegal(Move move, int ourKing, int theirKing, Bitmask pinnedPieces)
         {
             var (moveFrom, moveTo) = move.Unpack();
-            int type = bb.GetPieceAtIndex(moveFrom);
+            int type = MovedPiece(move);
 
             if (type == None)
             {
@@ -373,11 +382,63 @@ namespace Peeper.Logic.Core
         }
 
 
-        public bool IsDraw()
+        public Sennichite CheckSennichite(bool cutechess, int plyLimit = 16)
         {
-            return false;
+            var first = Math.Max(0, (int)StateDistance - plyLimit - 1);
+            BoardState* firstState = &StartingState[first];
+            BoardState* st = State - 4;
+
+            var hash = Hash;
+            while (st >= firstState)
+            {
+                if (st->Hash == hash)
+                {
+                    if (cutechess)
+                    {
+                        return Checked ? Sennichite.Win : Sennichite.Draw;
+                    }
+                    else
+                    {
+                        return ConsecutiveChecks(ToMove) >= 2 ? Sennichite.Win : Sennichite.Draw;
+                    }
+                }
+
+                st -= 2;
+            }
+
+            return Sennichite.None;
         }
 
+
+        public bool IsWinningImpasse()
+        {
+            if (Checked) 
+                return false;
+
+            var us = bb.Pieces[ToMove];
+            var hand = State->Hands[ToMove];
+            var ourKing = State->KingSquares[ToMove];
+            var promoZone = ToMove == Black ? BlackPromotionSquares : WhitePromotionSquares;
+
+            if (!promoZone.HasBit(ourKing))
+                return false;
+
+            var invaders = promoZone & us;
+            if (Popcount(invaders) < 11)
+                return false;
+
+            var majorMask = (bb.Pieces[Bishop] | bb.Pieces[Rook] | bb.Pieces[BishopPromoted] | bb.Pieces[RookPromoted]);
+
+            int points = ToMove == White ? 1 : 0;
+
+            points += 5 * (hand.NumHeld(Bishop) + hand.NumHeld(Rook));
+            points += 1 * (hand.NumHeld(Pawn) + hand.NumHeld(Lance) + hand.NumHeld(Knight) + hand.NumHeld(Silver) + hand.NumHeld(Gold));
+
+            points += 5 * Popcount(invaders & majorMask);
+            points += 1 * Popcount(invaders ^ majorMask ^ SquareBB(ourKing));
+
+            return points >= 28;
+        }
 
 
         public ulong Perft(int depth)
@@ -455,8 +516,8 @@ namespace Peeper.Logic.Core
         public bool LoadFromSFen(string sfen)
         {
             bb.Clear();
-            State->Hands[Black].Clear();
-            State->Hands[White].Clear();
+            //State->Hands[Black].Clear();
+            //State->Hands[White].Clear();
 
             MoveNumber = 1;
             State = StartingState;
@@ -493,7 +554,7 @@ namespace Peeper.Logic.Core
                     int color = SFenToColor(c);
                     int type = SFenToPiece(c);
 
-                    type += isPromoted ? PromotionNB : 0;
+                    type = isPromoted ? Promote(type) : type;
 
                     bb.AddPiece(color, type, sq);
                     isPromoted = false;
