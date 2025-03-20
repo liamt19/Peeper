@@ -84,6 +84,7 @@ namespace Peeper.Logic.Util
             };
         }
 
+        public static (ulong, ulong) Unpack(this Bitmask b) => (b.Upper(), b.Lower());
         public static ulong Upper(this Bitmask b) => (ulong)(b >> 64);
         public static ulong Lower(this Bitmask b) => (ulong)b;
 
@@ -477,7 +478,7 @@ namespace Peeper.Logic.Util
         {
             SearchThread thisThread = info.Position.Owner;
 
-            List<RootMove> rootMoves = thisThread.RootMoves;
+            var rootMoves = thisThread.RootMoves;
             int multiPV = Math.Min(MultiPV, rootMoves.Count);
 
             double time = Math.Max(1, Math.Round(TimeManager.GetSearchTime()));
@@ -488,7 +489,7 @@ namespace Peeper.Logic.Util
 
             for (int i = 0; i < multiPV; i++)
             {
-                RootMove rm = rootMoves[i];
+                ref RootMove rm = ref rootMoves[i];
                 bool moveSearched = rm.Score != -ScoreInfinite;
 
                 int depth = moveSearched ? thisThread.RootDepth : Math.Max(1, thisThread.RootDepth - 1);
@@ -543,7 +544,7 @@ namespace Peeper.Logic.Util
         }
 
 
-        public static void StableSort(List<RootMove> items, int offset = 0, int end = -1)
+        public static void StableSort(RootMoveList items, int offset = 0, int end = -1)
         {
             if (end == -1)
             {

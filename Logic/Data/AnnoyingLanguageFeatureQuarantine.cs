@@ -5,6 +5,9 @@ namespace Peeper.Logic.Data
     [InlineArray(MoveListSize)]
     public struct ScoredMoveBuffer { ScoredMove _; }
 
+    [InlineArray(MaxPly)]
+    public struct PVMoveBuffer { Move _; }
+
     [InlineArray(PieceNB)]
     public struct BitmaskBuffer14 { Bitmask _; }
 

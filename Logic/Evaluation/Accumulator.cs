@@ -61,5 +61,11 @@ namespace Peeper.Logic.Evaluation
             NativeMemory.AlignedFree(Black);
             NativeMemory.AlignedFree(White);
         }
+
+        public void MarkDirty()
+        {
+            NeedsRefresh[0] = NeedsRefresh[1] = true;
+            Computed[0] = Computed[1] = false;
+        }
     }
 }

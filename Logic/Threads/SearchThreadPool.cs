@@ -109,15 +109,14 @@ namespace Peeper.Logic.Threads
                 td.SelDepth = 0;
                 td.NMPPly = 0;
 
-                td.RootMoves = new List<RootMove>(size);
+                td.RootMoves.Clear();
                 for (int j = 0; j < size; j++)
-                {
-                    td.RootMoves.Add(new RootMove(list[j].Move));
-                }
+                    td.RootMoves[j].ReplaceWith(list[j].Move);
+                td.RootMoves.Resize(size);
 
                 if (setup.UCISearchMoves.Count != 0)
                 {
-                    td.RootMoves = td.RootMoves.Where(x => setup.UCISearchMoves.Contains(x.Move)).ToList();
+                    td.RootMoves.FilterWhere(x => setup.UCISearchMoves.Contains(x.Move));
                 }
 
                 td.RootPosition.LoadFromSFen(rootFEN);

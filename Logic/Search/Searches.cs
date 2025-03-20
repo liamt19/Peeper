@@ -226,12 +226,12 @@ namespace Peeper.Logic.Search
 
                     if (rmIndex == -1)
                     {
-                        string rms = string.Join(", ", thisThread.RootMoves.Select(x => x.Move));
+                        string rms = string.Join(", ", thisThread.RootMoves.ToSpan().ToArray().Select(x => x.Move));
                         FailFast($"Move {m} wasn't in the RootMoves list! [{rms}]");
                     }
                     
 
-                    RootMove rm = thisThread.RootMoves[rmIndex];
+                    ref RootMove rm = ref thisThread.RootMoves[rmIndex];
                     rm.AverageScore = (rm.AverageScore == -ScoreInfinite) ? score : ((rm.AverageScore + (score * 2)) / 3);
 
                     if (playedMoves == 1 || score > alpha)
@@ -240,7 +240,9 @@ namespace Peeper.Logic.Search
                         rm.Depth = thisThread.SelDepth;
 
                         rm.PVLength = 1;
-                        Array.Fill(rm.PV, Move.Null, 1, MaxPly - rm.PVLength);
+                        for (int pvI = 1; pvI < MaxPly - rm.PVLength; pvI++)
+                            rm.PV[pvI] = Move.Null;
+
                         for (Move* childMove = (ss + 1)->PV; *childMove != Move.Null; ++childMove)
                         {
                             rm.PV[rm.PVLength++] = *childMove;

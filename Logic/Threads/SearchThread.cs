@@ -43,7 +43,7 @@ namespace Peeper.Logic.Threads
         public bool StopSearching;
         public bool IsDatagen { get; init; } = false;
 
-        public List<RootMove> RootMoves = new List<RootMove>(64);
+        public RootMoveList RootMoves;
 
         public readonly Position RootPosition;
         public SearchThreadPool AssocPool;
@@ -96,6 +96,7 @@ namespace Peeper.Logic.Threads
             Quit = false;
 
             History = new HistoryTable();
+            RootMoves = new RootMoveList();
 
             NodeTable = new ulong[SquareNB][];
             for (int sq = 0; sq < SquareNB; sq++)
@@ -266,10 +267,8 @@ namespace Peeper.Logic.Threads
                 if (ShouldStop())
                     break;
 
-                foreach (RootMove rm in RootMoves)
-                {
-                    rm.PreviousScore = rm.Score;
-                }
+                for (int i = 0; i < RootMoves.Count; i++)
+                    RootMoves[i].PreviousScore = RootMoves[i].Score;
 
                 int usedDepth = RootDepth;
 
