@@ -12,23 +12,19 @@ namespace Peeper.Logic.Transposition
     public unsafe struct TTCluster
     {
         [FieldOffset( 0)] private TTEntry _elem0;
-#if NO
         [FieldOffset(10)] private TTEntry _elem1;
         [FieldOffset(20)] private TTEntry _elem2;
         [FieldOffset(30)] private fixed byte _pad0[2];
-#endif
 
 
         public TTCluster()
         {
             _elem0 = new TTEntry();
-#if NO
             _elem1 = new TTEntry();
             _elem2 = new TTEntry();
 
             _pad0[0] = (byte)':';
-            _pad0[1] = (byte)')';
-#endif
+            _pad0[1] = (byte)'3';
         }
 
         /// <summary>

@@ -15,18 +15,18 @@ namespace Peeper.Logic.Transposition
     /// <para></para>
     /// The replacement strategy and depth logic are inspired by Stockfish and Berserk.
     /// </summary>
-    [StructLayout(LayoutKind.Explicit, Pack = 2, Size = 12)]
+    [StructLayout(LayoutKind.Explicit, Pack = 2, Size = 10)]
     public struct TTEntry
     {
         public const int DepthOffset = -7;
         public const int DepthNone = -6;
 
-        [FieldOffset( 0)] private Move _Move;        //  4 = 32 bits
-        [FieldOffset( 4)] private short _Score;      //  2 = 16 bits
-        [FieldOffset( 6)] private short _StatEval;   //  2 = 16 bits
-        [FieldOffset( 8)] private ushort _Key;       //  2 = 16 bits
-        [FieldOffset(10)] private byte _AgePVType;   //  1 =  8 bits (5 bits for age, 1 for isPV, 2 for type)
-        [FieldOffset(11)] private byte _Depth;       //  1 =  8 bits
+        [FieldOffset(0)] private Move _Move;        //  4 = 32 bits
+        [FieldOffset(2)] private short _Score;      //  2 = 16 bits
+        [FieldOffset(4)] private short _StatEval;   //  2 = 16 bits
+        [FieldOffset(6)] private ushort _Key;       //  2 = 16 bits
+        [FieldOffset(8)] private byte _AgePVType;   //  1 =  8 bits (5 bits for age, 1 for isPV, 2 for type)
+        [FieldOffset(9)] private byte _Depth;       //  1 =  8 bits
 
 
         public readonly short Score => _Score;
