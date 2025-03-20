@@ -81,6 +81,36 @@ namespace Peeper.Logic.Data
         {
             return IsPromoted(type) ? Demote(type) : type;
         }
+
+        public static int FromDropIndex(int d)
+        {
+            return d switch
+            {
+                0 => Pawn,
+                1 => Lance,
+                2 => Knight,
+                3 => Silver,
+                4 => Gold,
+                5 => Bishop,
+                6 => Rook,
+                _ => None,
+            };
+        }
+
+        public static int ToDropIndex(int type)
+        {
+            return type switch
+            {
+                Pawn   => 0,
+                Lance  => 1,
+                Knight => 2,
+                Silver => 3,
+                Gold   => 4,
+                Bishop => 5,
+                Rook   => 6,
+                _      => None,
+            };
+        }
     }
 
     public static class Ranks

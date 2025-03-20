@@ -24,11 +24,11 @@ namespace Peeper.Logic.Search
             SearchThread thisThread = pos.Owner;
             TranspositionTable TT = thisThread.TT;
 
-            if (thisThread.IsMain)
-                thisThread.CheckLimits();
-
             if (depth == 0)
                 return QSearch<NodeType>(pos, ss, alpha, beta);
+
+            if (thisThread.IsMain)
+                thisThread.CheckLimits();
 
             thisThread.Nodes++;
 
@@ -302,8 +302,13 @@ namespace Peeper.Logic.Search
 
             SearchThread thisThread = pos.Owner;
 
-            if (thisThread.IsMain && thisThread.RootDepth > 2 && thisThread.ShouldStop())
-                return 0;
+            if (thisThread.IsMain)
+            {
+                thisThread.CheckLimits();
+
+                if (thisThread.RootDepth > 1 && thisThread.ShouldStop())
+                    return 0;
+            }
 
             thisThread.Nodes++;
 

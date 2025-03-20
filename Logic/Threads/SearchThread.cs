@@ -441,7 +441,7 @@ namespace Peeper.Logic.Threads
         {
             if (IsDatagen)
             {
-                if (Nodes >= HardNodeLimit && RootDepth > 2)
+                if (Nodes >= HardNodeLimit && RootDepth > 1)
                     SetStop();
             }
             else

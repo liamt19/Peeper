@@ -2,7 +2,7 @@
 #pragma warning disable CS8500 // This takes the address of, gets the size of, or declares a pointer to a managed type
 
 using System.Runtime.Intrinsics;
-using static Peeper.Logic.Evaluation.NNUE;
+using static Peeper.Logic.Evaluation.NetworkArchitecture;
 
 namespace Peeper.Logic.Evaluation
 {

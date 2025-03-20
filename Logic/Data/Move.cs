@@ -12,27 +12,27 @@ namespace Peeper.Logic.Data
     public readonly struct Move(int from, int to, int flags = 0)
     {
         public static readonly Move Null = new Move();
-        public static Move MakeDrop(int type, int sq) => new(type, sq, Move.FlagDrop);
+        public static Move MakeDrop(int type, int sq) => new(Piece.ToDropIndex(type), sq, Move.FlagDrop);
         public static Move MakePromo(int from, int to) => new(from, to, Move.FlagPromotion);
         public static Move MakeNormal(int from, int to) => new(from, to);
 
-        public readonly ushort Data { get; } = (ushort)((from << 0) | (to << 7) | flags);
+        public readonly ushort Data { get; } = (ushort)((to << 0) | (from << 7) | flags);
 
         private const int PromoShift = 14;
         private const int DropShift = 15;
 
         public const int FlagPromotion = 1 << PromoShift;
         private const int FlagDrop = 1 << DropShift;
-        private const int Mask_ToFrom = 0xFF3F;
+        private const int Mask_ToFrom = (1 << 14) - 1;
 
-        public readonly int From => (int)((Data >> 0) & 127);
-        public readonly int To => (int)((Data >> 7) & 127);
+        public readonly int To => (int)((Data >> 0) & 127);
+        public readonly int From => (int)((Data >> 7) & 127);
 
         public (int from, int to) Unpack() => (From, To);
 
         public readonly bool IsDrop => (Data & FlagDrop) != 0;
         public readonly bool IsPromotion => (Data & FlagPromotion) != 0;
-        public readonly int DroppedPiece => From;
+        public readonly int DroppedPiece => Piece.FromDropIndex(From);
 
 
         [MethodImpl(Inline)]

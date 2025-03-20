@@ -38,6 +38,14 @@ namespace Peeper.Logic.Datagen
             using var debugStreamWriter = new StreamWriter(debugStream);
 #endif
 
+            void Dbg(string s)
+            {
+#if DBG_PRINT
+                debugStreamWriter.WriteLine($"{threadID}\t{s}");
+                debugStreamWriter.Flush();
+#endif
+            }
+
             string fName = $"{softNodeLimit / 1000}k_{depthLimit}d_{threadID}.bin";
             using var ostr = File.Open(fName, FileMode.OpenOrCreate, FileAccess.Write, FileShare.Read);
             using var outWriter = new BinaryWriter(ostr);
