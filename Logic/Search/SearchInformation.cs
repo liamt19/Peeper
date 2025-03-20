@@ -21,7 +21,7 @@ namespace Peeper.Logic.Search
             this.Position = p;
 
             this.OnDepthFinish = Utilities.PrintSearchInfo;
-            this.OnSearchFinish = (ref SearchInformation info) => Log($"bestmove {info.Position.Owner.AssocPool.GetBestThread().RootMoves[0].Move.ToString()}");
+            this.OnSearchFinish = (ref SearchInformation info) => Log($"bestmove {info.Position.Owner.AssocPool.GetBestThread().RootMoves[0].Move}");
         }
 
 
@@ -35,9 +35,9 @@ namespace Peeper.Logic.Search
         {
             return new SearchInformation(pos)
             {
-                SoftNodeLimit = nodeLimit * 20,
-                HardNodeLimit = nodeLimit * 400,
-                DepthLimit = Math.Max(8, depthLimit + 2),
+                SoftNodeLimit = nodeLimit * 4,
+                HardNodeLimit = nodeLimit * 20,
+                DepthLimit = Math.Max(8, depthLimit),
                 OnDepthFinish = null,
                 OnSearchFinish = null,
             };

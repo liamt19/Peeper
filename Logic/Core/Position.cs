@@ -516,8 +516,6 @@ namespace Peeper.Logic.Core
         public bool LoadFromSFen(string sfen)
         {
             bb.Clear();
-            //State->Hands[Black].Clear();
-            //State->Hands[White].Clear();
 
             MoveNumber = 1;
             State = StartingState;
@@ -647,6 +645,57 @@ namespace Peeper.Logic.Core
             sb.AppendLine($"\r\n{ColorToString(ToMove)} to move");
 
             return sb.ToString();
+        }
+    
+        public void LoadStartpos()
+        {
+            bb.Pieces[0] = new(0x0, 0x7FC0000007FC0000);
+            bb.Pieces[2] = new(0x10100, 0x101);
+            bb.Pieces[3] = new(0x8200, 0x82);
+            bb.Pieces[6] = new(0x4400, 0x44);
+            bb.Pieces[8] = new(0x2800, 0x28);
+            bb.Pieces[9] = new(0x40, 0x400);
+            bb.Pieces[10] = new(0x1, 0x10000);
+            bb.Pieces[13] = new(0x1000, 0x10);
+            bb.Colors[Black] = new(0x0, 0x7FD05FF);
+            bb.Colors[White] = new(0x1FF41, 0x7FC0000000000000);
+            bb.Pieces[1] = bb.Pieces[4] = bb.Pieces[5] = bb.Pieces[7] = bb.Pieces[11] = bb.Pieces[12] = 0;
+
+            for (int i = 0; i < SquareNB; i++) 
+                bb.Mailbox[i] = None;
+
+            for (int type = 0; type < PieceNB; type++)
+            {
+                var m = bb.Pieces[type];
+                while (m != 0)
+                {
+                    int sq = PopLSB(&m);
+                    bb.Mailbox[sq] = type;
+                }
+            }
+
+            State = StartingState;
+            NativeMemory.Clear(State, BoardState.StateCopySize);
+
+            ToMove = Black;
+            MoveNumber = 1;
+
+            SetState();
+
+            if (UpdateNN)
+                State->Accumulator->MarkDirty();
+        }
+    
+        public List<BoardState> GetPriorStates()
+        {
+            List<BoardState> states = [];
+            BoardState* st = State;
+            while (st != (StartingState - 1))
+            {
+                states.Add(*st);
+                st--;
+            }
+            return states;
         }
     }
 }

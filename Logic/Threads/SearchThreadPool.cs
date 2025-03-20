@@ -32,8 +32,6 @@ namespace Peeper.Logic.Threads
         
         public TranspositionTable TTable;
 
-        public volatile bool StopThreads;
-
         public Barrier Blocker;
 
         static SearchThreadPool()
@@ -87,7 +85,7 @@ namespace Peeper.Logic.Threads
         {
             MainThread.WaitForThreadFinished();
 
-            StopThreads = false;
+            StartAllThreads();
             SharedInfo = rootInfo;
             SharedInfo.SearchActive = true;
 
@@ -111,15 +109,14 @@ namespace Peeper.Logic.Threads
                 td.SelDepth = 0;
                 td.NMPPly = 0;
 
-                td.RootMoves = new List<RootMove>(size);
+                td.RootMoves.Clear();
                 for (int j = 0; j < size; j++)
-                {
-                    td.RootMoves.Add(new RootMove(list[j].Move));
-                }
+                    td.RootMoves[j].ReplaceWith(list[j].Move);
+                td.RootMoves.Resize(size);
 
                 if (setup.UCISearchMoves.Count != 0)
                 {
-                    td.RootMoves = td.RootMoves.Where(x => setup.UCISearchMoves.Contains(x.Move)).ToList();
+                    td.RootMoves.FilterWhere(x => setup.UCISearchMoves.Contains(x.Move));
                 }
 
                 td.RootPosition.LoadFromSFen(rootFEN);
@@ -131,7 +128,7 @@ namespace Peeper.Logic.Threads
             }
 
             TimeManager.StartTimer();
-            MainThread.PrepareToSearch();
+            MainThread.WakeUp();
         }
 
 
@@ -151,24 +148,33 @@ namespace Peeper.Logic.Threads
         }
 
 
-        /// <summary>
-        /// Unblocks each thread waiting in IdleLoop by setting their <see cref="SearchThread.Searching"/> variable to true
-        /// and signaling the condition variable.
-        /// </summary>
-        public void StartThreads()
+        public void AwakenHelperThreads()
         {
             //  Skip Threads[0] because it will do this to itself after this method returns.
             for (int i = 1; i < ThreadCount; i++)
             {
-                Threads[i].PrepareToSearch();
+                Threads[i].WakeUp();
             }
         }
 
 
-        /// <summary>
-        /// Blocks the main thread of the pool until each of the other threads have finished searching and 
-        /// are blocked in IdleLoop.
-        /// </summary>
+        public void StopAllThreads()
+        {
+            for (int i = 1; i < ThreadCount; i++)
+                Threads[i].SetStop(true);
+
+            MainThread.SetStop(true);
+        }
+
+        public void StartAllThreads()
+        {
+            for (int i = 1; i < ThreadCount; i++)
+                Threads[i].SetStop(false);
+
+            MainThread.SetStop(false);
+        }
+
+
         public void WaitForSearchFinished()
         {
             //  Skip Threads[0] (the MainThread) since this method is only ever called when the MainThread is done.
@@ -179,11 +185,6 @@ namespace Peeper.Logic.Threads
         }
 
 
-        /// <summary>
-        /// Blocks the calling thread until the MainSearchThread has finished searching.
-        /// <br></br>
-        /// This should only be used after calling <see cref="StartSearch"/>, and only blocks if a search is currently active.
-        /// </summary>
         public void BlockCallerUntilFinished()
         {
             //  This can happen if any thread other than the main thread calls this method.
@@ -216,9 +217,6 @@ namespace Peeper.Logic.Threads
         }
 
 
-        /// <summary>
-        /// Resets each SearchThread's Accumulator and history heuristics to their defaults.
-        /// </summary>
         public void Clear()
         {
             for (int i = 0; i < ThreadCount; i++)
@@ -228,10 +226,6 @@ namespace Peeper.Logic.Threads
         }
 
 
-        /// <summary>
-        /// Returns the total amount of nodes searched by all SearchThreads in the pool.
-        /// </summary>
-        /// <returns></returns>
         public ulong GetNodeCount()
         {
             ulong total = 0;

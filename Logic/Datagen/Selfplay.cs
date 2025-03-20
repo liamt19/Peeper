@@ -1,7 +1,7 @@
 ﻿
 #pragma warning disable CS8500 // This takes the address of, gets the size of, or declares a pointer to a managed type
 
-#define DBG_PRINT
+//#define DBG_PRINT
 
 using System.Runtime.InteropServices;
 
@@ -12,6 +12,8 @@ using Peeper.Logic.Threads;
 using Peeper.Logic.Search;
 using Peeper.Logic.Evaluation;
 using Peeper.Logic.Data;
+using Peeper.Logic.Transposition;
+using System.Text;
 
 
 namespace Peeper.Logic.Datagen
@@ -21,153 +23,157 @@ namespace Peeper.Logic.Datagen
         private static int Seed = Environment.TickCount;
         private static readonly ThreadLocal<Random> ThreadRNG = new(() => new Random(Interlocked.Increment(ref Seed)));
 
-
         public static void RunGames(ulong gamesToRun, int threadID, ulong softNodeLimit = SoftNodeLimit, ulong depthLimit = DepthLimit)
         {
             SearchOptions.Hash = HashSize;
-
             TimeManager.RemoveHardLimit();
 
-            SearchThreadPool pool = new SearchThreadPool(1);
-            Position pos = new Position(owner: pool.MainThread);
+            TranspositionTable tt = new(HashSize);
+            SearchThread thread = new(0) { TT = tt, IsDatagen = true };
+            Position pos = thread.RootPosition;
             ref Bitboard bb = ref pos.bb;
 
-            Random rand = ThreadRNG.Value;
-            MoveList legalMoves = new();
-
-            Move bestMove = Move.Null;
-            int bestMoveScore = 0;
-
-            string fName = $"{softNodeLimit / 1000}k_{depthLimit}d_{threadID}.bin";
-
 #if DBG_PRINT
-            using var debugStream = File.OpenWrite("dbg.txt");
+            using var debugStream = File.Open($"dbg_{threadID}.txt", FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.ReadWrite);
             using var debugStreamWriter = new StreamWriter(debugStream);
 #endif
-            using FileStream bfeOutputFileStream = File.Open(fName, FileMode.OpenOrCreate);
-            using BinaryWriter outputWriter = new BinaryWriter(bfeOutputFileStream);
-            Span<PeeperDataFormat> datapoints = stackalloc PeeperDataFormat[WritableDataLimit];
 
-            ulong totalBadPositions = 0;
-            ulong totalGoodPositions = 0;
+            string fName = $"{softNodeLimit / 1000}k_{depthLimit}d_{threadID}.bin";
+            using var ostr = File.Open(fName, FileMode.OpenOrCreate, FileAccess.Write, FileShare.Read);
+            using var outWriter = new BinaryWriter(ostr);
+            
+            Stoatpack pack = new();
 
-            SearchInformation info = SearchInformation.DatagenStandard(pos, softNodeLimit, (int)depthLimit);
-            SearchInformation prelimInfo = SearchInformation.DatagenPrelim(pos, softNodeLimit, (int)depthLimit);
+            ulong totalPositions = 0;
+            ulong totalDepths = 0;
 
-            Stopwatch sw = Stopwatch.StartNew();
+            var info = SearchInformation.DatagenStandard(pos, softNodeLimit, (int)depthLimit);
+            var prelimInfo = SearchInformation.DatagenPrelim(pos, softNodeLimit, (int)depthLimit);
 
             for (ulong gameNum = 0; gameNum < gamesToRun; gameNum++)
             {
-                GetStartPos(pool, pos, ref prelimInfo);
+                GetStartPos(thread, ref pack, ref prelimInfo);
 
-                GameResult result = GameResult.Draw;
-                int toWrite = 0;
-                int filtered = 0;
-                int adjudicationCounter = 0;
+                GameResult result = GameResult.None;
+                int winPlies = 0, drawPlies = 0, lossPlies = 0;
 
-                while (true)
+                while (result == GameResult.None)
                 {
-                    pool.StartSearch(pos, ref info);
-                    pool.BlockCallerUntilFinished();
-
-                    bestMove = pool.GetBestThread().RootMoves[0].Move;
-                    bestMoveScore = pool.GetBestThread().RootMoves[0].Score;
-
-                    if (bestMoveScore == -ScoreInfinite)
+                    int legalMoves = SetupThread(pos, thread);
+                    if (legalMoves == 0)
                     {
-                        int z = 0;
-                    }
-
-#if DBG_PRINT
-                    debugStreamWriter.Write($"{pos.GetSFen()}\t{bestMove} {bestMoveScore}\t");
-#endif
-
-                    bestMoveScore *= (pos.ToMove == White ? -1 : 1);
-
-                    if (Math.Abs(bestMoveScore) >= AdjudicateScore)
-                    {
-                        if (++adjudicationCounter > AdjudicateMoves)
-                        {
-                            result = (bestMoveScore > 0) ? GameResult.BlackWin : GameResult.WhiteWin;
-                            break;
-                        }
-                    }
-                    else
-                        adjudicationCounter = 0;
-
-
-                    bool inCheck = pos.Checked;
-                    bool bmCap = pos.IsCapture(bestMove);
-                    bool badScore = Math.Abs(bestMoveScore) > MaxFilteringScore;
-                    bool isOk = !(inCheck || bmCap || badScore);
-                    if (isOk)
-                    {
-#if DBG_PRINT
-                        debugStreamWriter.WriteLine();
-#endif
-                        datapoints[toWrite].Fill(pos, bestMove, bestMoveScore);
-                        toWrite++;
-                    }
-                    else
-                    {
-#if DBG_PRINT
-                        debugStreamWriter.WriteLine($"Skipped {inCheck} {bmCap} {badScore}");
-#endif
-                        filtered++;
-                    }
-
-                    pos.MakeMove(bestMove);
-
-                    if (pos.GenerateLegal(ref legalMoves) == 0)
-                    {
-                        result = !pos.Checked          ? GameResult.Draw 
-                               : (pos.ToMove == White) ? GameResult.BlackWin 
-                               :                         GameResult.WhiteWin;
-                        
+                        result = pos.ToMove == Black ? GameResult.WhiteWin : GameResult.BlackWin;
                         break;
                     }
-                    else if (toWrite == WritableDataLimit - 1)
+
+                    thread.Search(ref info);
+
+                    Move move = thread.RootMoves[0].Move;
+                    int score = thread.RootMoves[0].Score;
+                    score *= (pos.ToMove == Black ? 1 : -1);
+
+#if DBG_PRINT
+                    debugStreamWriter.WriteLine($"{pos.GetSFen()}\t{move} {score}\t");
+#endif
+                    totalDepths += (ulong)thread.RootDepth;
+
+                    if (IsDecisive(score))
                     {
-                        result = bestMoveScore >  800 ? GameResult.BlackWin :
-                                 bestMoveScore < -800 ? GameResult.WhiteWin :
-                                                        GameResult.Draw;
+                        result = score > 0 ? GameResult.BlackWin : GameResult.WhiteWin;
                         break;
                     }
+
+                    pos.MakeMove(move);
+                    var sennichite = pos.CheckSennichite(false, BoardState.StateStackSize);
+                    if (sennichite == Sennichite.Draw)
+                    {
+                        result = GameResult.Draw;
+                        break;
+                    }
+                    
+                    if (sennichite == Sennichite.Win)
+                    {
+                        StringBuilder sb = new();
+                        sb.AppendLine($"{move} caused an illegal perpetual!");
+                        sb.AppendLine($"sfen: {pos.GetSFen()}");
+                        sb.AppendLine($"captured: {pos.State->CapturedPiece}");
+                        sb.AppendLine($"Prior keys: {string.Join(", ", pos.GetPriorStates().Select(x => x.Hash))}");
+                        FailFast(sb.ToString());
+                    }
+
+
+                    if (score >= AdjudicateScore)
+                    {
+                        winPlies++;
+                        lossPlies = 0;
+                        drawPlies = 0;
+                    }
+                    else if (score <= -AdjudicateScore)
+                    {
+                        winPlies = 0;
+                        lossPlies++;
+                        drawPlies = 0;
+                    }
+                    else
+                    {
+                        winPlies = 0;
+                        lossPlies = 0;
+                        drawPlies = 0;
+                    }
+
+                    if (winPlies >= AdjudicatePlies)
+                    {
+                        result = GameResult.BlackWin;
+                    }
+                    else if (lossPlies >= AdjudicatePlies)
+                    {
+                        result = GameResult.WhiteWin;
+                    }
+                    else if (drawPlies >= 10)
+                    {
+                        result = GameResult.Draw;
+                    }
+
+                    pack.Push(move, (short)score);
+
+                    if (pack.IsAtMoveLimit())
+                        result = GameResult.Draw;
                 }
 
 #if DBG_PRINT
                 debugStreamWriter.WriteLine($"done, {result}");
 #endif
 
+                totalPositions += (uint)pack.MoveIndex;
 
-                totalBadPositions += (uint)filtered;
-                totalGoodPositions += (uint)toWrite;
-
-                var goodPerSec = totalGoodPositions / sw.Elapsed.TotalSeconds;
-                var totalPerSec = (totalGoodPositions + totalBadPositions) / sw.Elapsed.TotalSeconds;
-
-                ProgressBroker.ReportProgress(threadID, gameNum, totalGoodPositions, goodPerSec);
-                AddResultsAndWrite(datapoints[..toWrite], result, outputWriter);
+                ProgressBroker.ReportProgress(threadID, gameNum, totalPositions, totalDepths);
+                pack.AddResultsAndWrite(result, outWriter);
             }
 
         }
 
 
-        private static void GetStartPos(SearchThreadPool pool, Position pos, ref SearchInformation prelim)
+        private static void GetStartPos(SearchThread thread, ref Stoatpack pack, ref SearchInformation prelim)
         {
+            Position pos = thread.RootPosition;
+
             Random rand = ThreadRNG.Value;
             MoveList legalMoves = new();
 
+            pack.Clear();
+            Span<Move> randomMoves = stackalloc Move[16];
+
             while (true)
             {
-                pool.TTable.Clear();
-                pool.Clear();
+                thread.SetStop(false);
+                thread.TT.Clear();
+                thread.TT.TTUpdate();
+                thread.History.Clear();
 
             Retry:
+                pos.LoadStartpos();
 
-                pos.LoadFromSFen(InitialFEN);
-
-                int randMoveCount = rand.Next(MinOpeningPly, MaxOpeningPly + 1);
+                int randMoveCount = rand.Next(RandomPlies, RandomPlies + (RandomizeStartSide ? 1 : 0));
                 for (int i = 0; i < randMoveCount; i++)
                 {
                     int legals = pos.GenerateLegal(ref legalMoves);
@@ -175,59 +181,45 @@ namespace Peeper.Logic.Datagen
                     if (legals == 0)
                         goto Retry;
 
-                    pos.MakeMove(legalMoves[rand.Next(0, legals)].Move);
+                    Move rMove = legalMoves[rand.Next(0, legals)].Move;
+                    randomMoves[i] = rMove;
+                    pos.MakeMove(rMove);
                 }
 
                 if (pos.GenerateLegal(ref legalMoves) == 0)
                     continue;
 
-                pool.StartSearch(pos, ref prelim);
-                pool.BlockCallerUntilFinished();
-
-                if (Math.Abs(pool.GetBestThread().RootMoves[0].Score) >= MaxOpeningScore)
+                SetupThread(pos, thread);
+                thread.Search(ref prelim);
+                if (Math.Abs(thread.RootMoves[0].Score) >= MaxOpeningScore)
                     continue;
 
+                for (int i = 0; i < randMoveCount; i++)
+                    pack.PushUnscored(randomMoves[i]);
+
+                thread.TT.Clear();
+                thread.TT.TTUpdate();
+                thread.History.Clear();
                 return;
             }
         }
 
-        private static void AddResultsAndWrite(Span<PeeperDataFormat> datapoints, GameResult gr, BinaryWriter outputWriter)
+
+        private static int SetupThread(Position pos, SearchThread td)
         {
-            for (int i = 0; i < datapoints.Length; i++)
-                datapoints[i].SetResult(gr);
+            td.Reset();
+            td.SetStop(false);
 
-            fixed (PeeperDataFormat* ptr = datapoints)
-            {
-                byte* data = (byte*)ptr;
-                outputWriter.Write(new Span<byte>(data, datapoints.Length * sizeof(PeeperDataFormat)));
-            }
+            MoveList list = new();
+            int size = pos.GenerateLegal(ref list);
 
-            outputWriter.Flush();
+            td.RootMoves.Clear();
+            for (int j = 0; j < size; j++)
+                td.RootMoves[j].ReplaceWith(list[j].Move);
+            td.RootMoves.Resize(size);
+
+            return size;
         }
 
-
-
-        public static void ResetPosition(Position pos)
-        {
-            ref Bitboard bb = ref pos.bb;
-
-            pos.MoveNumber = 1;
-
-            pos.State = pos.StartingState;
-
-            var st = pos.State;
-            NativeMemory.Clear(st, BoardState.StateCopySize);
-            st->CapturedPiece = None;
-            st->KingSquares[White] = bb.KingIndex(White);
-            st->KingSquares[Black] = bb.KingIndex(Black);
-
-            pos.SetState();
-
-            NNUE.RefreshAccumulator(pos);
-        }
-
-
-        [DllImport("kernel32.dll")]
-        static extern uint GetCurrentThreadId();
     }
 }

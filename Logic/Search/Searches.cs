@@ -6,6 +6,7 @@ using Peeper.Logic.Threads;
 using Peeper.Logic.Transposition;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Xml.Linq;
 
 using static Peeper.Logic.Transposition.TTEntry;
@@ -22,22 +23,11 @@ namespace Peeper.Logic.Search
             SearchThread thisThread = pos.Owner;
             TranspositionTable TT = thisThread.TT;
 
-            if (!isRoot && thisThread.IsMain)
-            {
-                if (thisThread.NodeLimitReached())
-                    thisThread.SetStop();
-
-                if (thisThread.Nodes % 1024 == 0 && TimeManager.CheckHardTime())
-                    thisThread.SetStop();
-
-                if (thisThread.ShouldStop())
-                    return ScoreDraw;
-            }
+            if (thisThread.IsMain)
+                thisThread.CheckLimits();
 
             if (depth == 0)
-            {
                 return QSearch<NodeType>(pos, ss, alpha, beta);
-            }
 
             thisThread.Nodes++;
 
@@ -60,7 +50,7 @@ namespace Peeper.Logic.Search
 
             if (!isRoot)
             {
-                if (thisThread.AssocPool.StopThreads || ss->Ply >= MaxSearchStackPly - 1)
+                if (thisThread.ShouldStop() || ss->Ply >= MaxSearchStackPly - 1)
                 {
                     return pos.Checked ? ScoreDraw : NNUE.GetEvaluation(pos);
                 }
@@ -217,7 +207,7 @@ namespace Peeper.Logic.Search
                     thisThread.NodeTable[moveFrom][moveTo] += thisThread.Nodes - prevNodes;
                 }
 
-                if (thisThread.AssocPool.StopThreads)
+                if (thisThread.ShouldStop())
                 {
                     return ScoreDraw;
                 }
@@ -236,12 +226,12 @@ namespace Peeper.Logic.Search
 
                     if (rmIndex == -1)
                     {
-                        string rms = string.Join(", ", thisThread.RootMoves.Select(x => x.Move));
+                        string rms = string.Join(", ", thisThread.RootMoves.ToSpan().ToArray().Select(x => x.Move));
                         FailFast($"Move {m} wasn't in the RootMoves list! [{rms}]");
                     }
                     
 
-                    RootMove rm = thisThread.RootMoves[rmIndex];
+                    ref RootMove rm = ref thisThread.RootMoves[rmIndex];
                     rm.AverageScore = (rm.AverageScore == -ScoreInfinite) ? score : ((rm.AverageScore + (score * 2)) / 3);
 
                     if (playedMoves == 1 || score > alpha)
@@ -250,7 +240,9 @@ namespace Peeper.Logic.Search
                         rm.Depth = thisThread.SelDepth;
 
                         rm.PVLength = 1;
-                        Array.Fill(rm.PV, Move.Null, 1, MaxPly - rm.PVLength);
+                        for (int pvI = 1; pvI < MaxPly - rm.PVLength; pvI++)
+                            rm.PV[pvI] = Move.Null;
+
                         for (Move* childMove = (ss + 1)->PV; *childMove != Move.Null; ++childMove)
                         {
                             rm.PV[rm.PVLength++] = *childMove;
@@ -309,17 +301,8 @@ namespace Peeper.Logic.Search
 
             SearchThread thisThread = pos.Owner;
 
-            if (thisThread.IsMain)
-            {
-                if (thisThread.NodeLimitReached())
-                    thisThread.SetStop();
-
-                if (thisThread.Nodes % 1024 == 0 && TimeManager.CheckHardTime())
-                    thisThread.SetStop();
-
-                if (thisThread.ShouldStop())
-                    return ScoreDraw;
-            }
+            if (thisThread.IsMain && thisThread.RootDepth > 2 && thisThread.ShouldStop())
+                return 0;
 
             thisThread.Nodes++;
 

@@ -2,7 +2,7 @@
 
 namespace Peeper.Logic.Data
 {
-    public class RootMove : IComparable<RootMove>
+    public unsafe struct RootMove : IComparable<RootMove>
     {
         public Move Move;
 
@@ -11,7 +11,7 @@ namespace Peeper.Logic.Data
         public int AverageScore;
         public int Depth;
 
-        public Move[] PV;
+        public PVMoveBuffer PV;
         public int PVLength;
 
         public RootMove(Move move, int score = -ScoreInfinite)
@@ -22,17 +22,30 @@ namespace Peeper.Logic.Data
             AverageScore = score;
             Depth = 0;
 
-            PV = new Move[MaxPly];
+            fixed (Move* ptr = &PV[0])
+                new Span<Move>(ptr, MaxPly).Clear();
             PV[0] = move;
             PVLength = 1;
         }
 
-        [MethodImpl(Inline)]
-        public int CompareTo(RootMove? other)
+        public void ReplaceWith(Move newMove)
         {
-            if (Score != other?.Score)
+            Move = newMove;
+            Score = PreviousScore = AverageScore = -ScoreInfinite;
+            Depth = 0;
+
+            fixed (Move* ptr = &PV[0])
+                new Span<Move>(ptr, MaxPly).Clear();
+            PV[0] = newMove;
+            PVLength = 1;
+        }
+
+        [MethodImpl(Inline)]
+        public int CompareTo(RootMove other)
+        {
+            if (Score != other.Score)
             {
-                return Score.CompareTo(other?.Score);
+                return Score.CompareTo(other.Score);
             }
             else
             {
