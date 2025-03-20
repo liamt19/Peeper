@@ -14,7 +14,7 @@ namespace Peeper.Logic.Transposition
 
         private const int MinTTClusters = 1000;
 
-        public const int EntriesPerCluster = 1;
+        public const int EntriesPerCluster = 3;
 
         private TTCluster* Clusters;
         public ulong ClusterCount { get; private set; }
