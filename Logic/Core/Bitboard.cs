@@ -174,5 +174,19 @@ namespace Peeper.Logic.Core
         {
             return ActiveFormatter.DisplayBoard(this);
         }
+
+        [MethodImpl(Inline)] public Bitmask PieceMask(int a, int b, int c, int d, int e, int f, int g, int h, int i) => PieceMask(a, b, c, d, e, f, g, h) | Pieces[i];
+        [MethodImpl(Inline)] public Bitmask PieceMask(int a, int b, int c, int d, int e, int f, int g, int h) => PieceMask(a, b, c, d, e, f, g) | Pieces[h];
+        [MethodImpl(Inline)] public Bitmask PieceMask(int a, int b, int c, int d, int e, int f, int g) => PieceMask(a, b, c, d, e, f) | Pieces[g];
+        [MethodImpl(Inline)] public Bitmask PieceMask(int a, int b, int c, int d, int e, int f) => PieceMask(a, b, c, d, e) | Pieces[f];
+        [MethodImpl(Inline)] public Bitmask PieceMask(int a, int b, int c, int d, int e) => PieceMask(a, b, c, d) | Pieces[e];
+        [MethodImpl(Inline)] public Bitmask PieceMask(int a, int b, int c, int d) => PieceMask(a, b, c) | Pieces[d];
+        [MethodImpl(Inline)] public Bitmask PieceMask(int a, int b, int c) => PieceMask(a, b) | Pieces[c];
+        [MethodImpl(Inline)] public Bitmask PieceMask(int a, int b) => PieceMask(a) | Pieces[b];
+        [MethodImpl(Inline)] public Bitmask PieceMask(int a) => Pieces[a];
+
+        [MethodImpl(Inline)] public Bitmask Golds() => PieceMask(PawnPromoted, LancePromoted, KnightPromoted, SilverPromoted, Gold);
+        [MethodImpl(Inline)] public Bitmask Bishops() => PieceMask(Bishop, BishopPromoted);
+        [MethodImpl(Inline)] public Bitmask Rooks() => PieceMask(Rook, RookPromoted);
     }
 }
