@@ -87,25 +87,20 @@ namespace Peeper.Logic.Search
                 ss->StaticEval = eval = ScoreNone;
                 goto MovesLoop;
             }
-#if TODO
             else if (ss->TTHit)
             {
                 rawEval = tte->StatEval != ScoreNone ? tte->StatEval : NNUE.GetEvaluation(pos);
-                eval = ss->StaticEval = AdjustEval(thisThread, us, rawEval);
 
-                //  If the ttScore isn't invalid, use that score instead of the static eval.
-                if (ttScore != ScoreNone && tte->IsScoreUsable(ttScore, eval))
-                    eval = ttScore;
+                eval = ss->StaticEval = AdjustEval(thisThread, us, rawEval);
             }
             else
             {
                 rawEval = NNUE.GetEvaluation(pos);
+
                 eval = ss->StaticEval = AdjustEval(thisThread, us, rawEval);
+
                 tte->Update(pos.Hash, ScoreNone, BoundNone, DepthNone, Move.Null, rawEval, TT.Age, ss->TTPV);
             }
-#endif
-
-            eval = ss->StaticEval = NNUE.GetEvaluation(pos);
 
             if (depth <= RFPDepth
 #if TODO
