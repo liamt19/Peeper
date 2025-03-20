@@ -9,6 +9,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Xml.Linq;
 
+using static Peeper.Logic.Evaluation.MaterialCounting;
 using static Peeper.Logic.Transposition.TTEntry;
 
 namespace Peeper.Logic.Search
@@ -375,6 +376,12 @@ namespace Peeper.Logic.Search
 
                 var (moveFrom, moveTo) = m.Unpack();
 
+                if (!IsLoss(bestScore))
+                {
+                    if (!SEE_GE(pos, m, -200))
+                        continue;
+                }
+
                 ss->CurrentMove = m;
                 ss->ContinuationHistory = history.Continuations[0][0][0, 0, 0];
 
@@ -429,6 +436,124 @@ namespace Peeper.Logic.Search
         {
             return score;
         }
+
+
+        private static bool SEE_GE(Position pos, Move m, int threshold = 1)
+        {
+            ref Bitboard bb = ref pos.bb;
+
+            var (moveFrom, moveTo) = m.Unpack();
+
+            int swap = MaterialCounting.GetPieceValue(bb.GetPieceAtIndex(moveTo)) - threshold;
+            if (swap < 0)
+                return false;
+
+            var movedPiece = pos.MovedPiece(m);
+            swap = MaterialCounting.GetPieceValue(movedPiece) - swap;
+            if (swap <= 0)
+                return true;
+
+            var fromMask = m.IsDrop ? 0 : SquareBB(moveFrom);
+            var occ = (bb.Occupancy ^ fromMask) | SquareBB(moveTo);
+
+            var attackers = bb.AttackersTo(moveTo, occ);
+            Bitmask stmAttackers;
+            Bitmask temp;
+
+            int stm = pos.ToMove;
+            int res = 1;
+            while (true)
+            {
+                stm = Not(stm);
+                attackers &= occ;
+
+                stmAttackers = attackers & bb.Colors[stm];
+                if (stmAttackers == 0)
+                {
+                    break;
+                }
+
+                if ((pos.State->Pinners[Not(stm)] & occ) != 0)
+                {
+                    stmAttackers &= ~pos.State->BlockingPieces[stm];
+                    if (stmAttackers == 0)
+                    {
+                        break;
+                    }
+                }
+
+                res ^= 1;
+
+                if ((temp = stmAttackers & bb.Pieces[Pawn]) != 0)
+                {
+                    if ((swap = ValuePawn - swap) < res)
+                        break;
+                }
+                else if ((temp = stmAttackers & bb.Pieces[Lance]) != 0)
+                {
+                    if ((swap = ValueLance - swap) < res)
+                        break;
+                }
+                else if ((temp = stmAttackers & bb.Pieces[Knight]) != 0)
+                {
+                    if ((swap = ValueKnight - swap) < res)
+                        break;
+                    occ ^= SquareBB(LSB(temp));
+
+                    continue;
+                }
+                else if ((temp = stmAttackers & bb.Pieces[Silver]) != 0)
+                {
+                    if ((swap = ValueSilver - swap) < res)
+                        break;
+                }
+                else if ((temp = stmAttackers & bb.Golds()) != 0)
+                {
+                    if ((swap = ValueGold - swap) < res)
+                        break;
+                }
+                else if ((temp = stmAttackers & bb.Pieces[Bishop]) != 0)
+                {
+                    if ((swap = ValueBishop - swap) < res)
+                        break;
+                }
+                else if ((temp = stmAttackers & bb.Pieces[Rook]) != 0)
+                {
+                    if ((swap = ValueRook - swap) < res)
+                        break;
+                }
+                else if ((temp = stmAttackers & bb.Pieces[BishopPromoted]) != 0)
+                {
+                    if ((swap = ValueBishopPromoted - swap) < res)
+                        break;
+                }
+                else if ((temp = stmAttackers & bb.Pieces[RookPromoted]) != 0)
+                {
+                    if ((swap = ValueRookPromoted - swap) < res)
+                        break;
+                }
+                else
+                {
+                    if ((attackers & ~bb.Pieces[stm]) != 0)
+                    {
+                        return (res ^ 1) != 0;
+                    }
+                    else
+                    {
+                        return res != 0;
+                    }
+                }
+
+                int sq = PopLSB(&temp);
+                occ ^= SquareBB(sq);
+
+                attackers |= GetBishopMoves(moveTo, occ) & bb.Bishops();
+                attackers |= GetRookMoves(moveTo, occ) & bb.Rooks();
+            }
+
+            return res != 0;
+        }
+
 
         private static int RFPMargin(int depth)
         {
