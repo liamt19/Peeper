@@ -453,7 +453,8 @@ namespace Peeper.Logic.Search
             if (swap <= 0)
                 return true;
 
-            var occ = (bb.Occupancy ^ SquareBB(moveFrom)) | SquareBB(moveTo);
+            var fromMask = m.IsDrop ? 0 : SquareBB(moveFrom);
+            var occ = (bb.Occupancy ^ fromMask) | SquareBB(moveTo);
 
             var attackers = bb.AttackersTo(moveTo, occ);
             Bitmask stmAttackers;
