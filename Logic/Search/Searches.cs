@@ -318,9 +318,10 @@ namespace Peeper.Logic.Search
             int score = -ScoreInfinite;
             int bestScore = -ScoreInfinite;
 
-            const short rawEval = 0;
+            short rawEval = 0;
             int eval = ss->StaticEval;
             int startingAlpha = alpha;
+            var bound = TTNodeType.Beta;
 
             ss->InCheck = pos.Checked;
             ss->TTHit = TT.Probe(pos.Hash, out TTEntry* tte);
@@ -350,7 +351,18 @@ namespace Peeper.Logic.Search
                 goto MovesLoop;
             }
 
-            eval = ss->StaticEval = NNUE.GetEvaluation(pos);
+            if (ss->TTHit)
+            {
+                rawEval = tte->StatEval != ScoreNone ? tte->StatEval : NNUE.GetEvaluation(pos);
+
+                eval = ss->StaticEval = AdjustEval(thisThread, us, rawEval);
+            }
+            else
+            {
+                rawEval = NNUE.GetEvaluation(pos);
+
+                eval = ss->StaticEval = AdjustEval(thisThread, us, rawEval);
+            }
 
             bestScore = eval;
 
@@ -421,6 +433,7 @@ namespace Peeper.Logic.Search
 
                         if (score >= beta)
                         {
+                            bound = TTNodeType.Alpha;
                             break;
                         }
 
@@ -428,6 +441,8 @@ namespace Peeper.Logic.Search
                     }
                 }
             }
+
+            tte->Update(pos.Hash, MakeTTScore((short)bestScore, ss->Ply), bound, 0, bestMove, rawEval, TT.Age, ttPV);
 
             return bestScore;
         }
