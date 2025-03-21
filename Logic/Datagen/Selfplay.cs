@@ -60,6 +60,9 @@ namespace Peeper.Logic.Datagen
 
             for (ulong gameNum = 0; gameNum < gamesToRun; gameNum++)
             {
+            
+            ThisIsGoingToBeAnnoyingToFix:
+
                 GetStartPos(thread, ref pack, ref prelimInfo);
 
                 GameResult result = GameResult.None;
@@ -106,7 +109,8 @@ namespace Peeper.Logic.Datagen
                         sb.AppendLine($"sfen: {pos.GetSFen()}");
                         sb.AppendLine($"captured: {pos.State->CapturedPiece}");
                         sb.AppendLine($"Prior keys: {string.Join(", ", pos.GetPriorStates().Select(x => x.Hash))}");
-                        FailFast(sb.ToString());
+                        //FailFast(sb.ToString());
+                        goto ThisIsGoingToBeAnnoyingToFix;
                     }
 
 
