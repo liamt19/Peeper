@@ -302,7 +302,7 @@ namespace Peeper.Logic.Core
 
                 if (PawnMoveMask(ourColor, moveTo).HasBit(theirKing))
                 {
-                    var mask = bb.AttackersTo(moveTo, bb.Occupancy);
+                    var mask = bb.AttackersTo(moveTo, bb.Occupancy) | (KingMoveMask(moveTo) & SquareBB(ourKing));
                     bool isDefended = (mask & bb.Colors[ourColor]) != 0;
                     var nonPinnedAttackers = mask & bb.Colors[theirColor] & ~State->BlockingPieces[theirColor];
                     if (isDefended && nonPinnedAttackers == 0)
