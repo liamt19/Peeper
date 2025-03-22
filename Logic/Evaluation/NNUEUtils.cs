@@ -89,48 +89,5 @@ namespace Peeper.Logic.Evaluation
         {
             return (perspective == White) ? A1 - sq : sq;
         }
-
-
-        private const int HAND_MAX_HELD = 38;
-        private const int TYPE_STRIDE = SquareNB;
-        private const int HAND_STRIDE = TYPE_STRIDE * PieceNB;
-        private const int COLOR_STRIDE = HAND_STRIDE + HAND_MAX_HELD;
-        public static int BoardFeatureIndexSingle(int color, int type, int sq, int perspective)
-        {
-            sq = Orient(sq, perspective);
-
-            return (((color ^ perspective) * COLOR_STRIDE) + (type * TYPE_STRIDE) + sq) * L1_SIZE;
-        }
-
-        public static int HandFeatureIndexSingle(int handColor, int type, int held, int perspective)
-        {
-            return (((handColor ^ perspective) * COLOR_STRIDE) + HAND_STRIDE + HandOffsets[type] + held) * L1_SIZE;
-        }
-
-        public static (int bIdx, int wIdx) BoardFeatureIndex(int color, int type, int sq)
-        {
-            int bSq = Orient(sq, Black);
-            int wSq = Orient(sq, White);
-
-            var b = ((color ^ Black) * COLOR_STRIDE) + (type * TYPE_STRIDE) + bSq;
-            var w = ((color ^ White) * COLOR_STRIDE) + (type * TYPE_STRIDE) + wSq;
-            return (b * L1_SIZE, w * L1_SIZE);
-        }
-
-        public static (int bIdx, int wIdx) HandFeatureIndex(int handColor, int type, int held)
-        {
-            var b = ((handColor ^ Black) * COLOR_STRIDE) + HAND_STRIDE + HandOffsets[type] + held;
-            var w = ((handColor ^ White) * COLOR_STRIDE) + HAND_STRIDE + HandOffsets[type] + held;
-            return (b * L1_SIZE, w * L1_SIZE);
-        }
-
-
-        private const int OOB = int.MaxValue;
-        private static ReadOnlySpan<int> HandOffsets => 
-        [
-            0, OOB, 18, 22, OOB, OOB, 26, OOB, 30, 34, 36,
-            OOB, OOB, OOB, OOB,
-        ];
-
     }
 }

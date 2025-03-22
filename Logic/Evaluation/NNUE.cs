@@ -7,26 +7,20 @@ using NetworkT = Peeper.Logic.Evaluation.NetworkContainerT<short, short>;
 
 using static Peeper.Logic.Evaluation.FunUnrollThings;
 using static Peeper.Logic.Evaluation.NNUEUtils;
+using static Peeper.Logic.Evaluation.NetworkArchitecture;
 
 using System.Reflection;
 using Peeper.Logic.NN;
 using System.Runtime.CompilerServices;
 using Peeper.Logic.Search;
+using Peeper.Logic.Data;
+using Peeper.Logic.Datagen;
 
 
 namespace Peeper.Logic.Evaluation
 {
     public static unsafe class NNUE
     {
-        public const int INPUT_BUCKETS = 1;
-        public const int FT_SIZE = 2344;
-        public const int L1_SIZE = 128;
-        public const int OUTPUT_BUCKETS = 1;
-
-        private const int FT_QUANT = 255;
-        private const int L1_QUANT = 64;
-        private const int OutputScale = 400;
-
         public static string NetworkName
         {
             get
@@ -38,13 +32,6 @@ namespace Peeper.Logic.Evaluation
                 catch { return ""; }
             }
         }
-
-        private const int N_FTW = FT_SIZE * L1_SIZE * INPUT_BUCKETS;
-        private const int N_FTB = L1_SIZE;
-        private const int N_L1W = OUTPUT_BUCKETS * L1_SIZE * 2;
-        private const int N_L1B = OUTPUT_BUCKETS;
-
-        private const long ExpectedNetworkSize = (N_FTW + N_FTB + N_L1W + N_L1B) * sizeof(short);
 
         private static readonly NetworkT Net;
 

@@ -38,7 +38,6 @@ namespace Peeper.Logic.Datagen
         {
             byte wdl = (byte)((int)gr << 6);
             outputWriter.Write(wdl);
-            outputWriter.Write((byte)0);
 
             ushort unscoredCount = (ushort)UnscoredIndex;
             outputWriter.Write(unscoredCount);

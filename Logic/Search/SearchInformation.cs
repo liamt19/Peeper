@@ -35,8 +35,8 @@ namespace Peeper.Logic.Search
         {
             return new SearchInformation(pos)
             {
-                SoftNodeLimit = nodeLimit * 4,
-                HardNodeLimit = nodeLimit * 20,
+                SoftNodeLimit = nodeLimit * 2,
+                HardNodeLimit = nodeLimit * 4,
                 DepthLimit = Math.Max(8, depthLimit),
                 OnDepthFinish = null,
                 OnSearchFinish = null,
@@ -48,7 +48,7 @@ namespace Peeper.Logic.Search
             return new SearchInformation(pos)
             {
                 SoftNodeLimit = nodeLimit,
-                HardNodeLimit = nodeLimit * 20,
+                HardNodeLimit = nodeLimit * 4,
                 DepthLimit = depthLimit,
                 OnDepthFinish = null,
                 OnSearchFinish = null,

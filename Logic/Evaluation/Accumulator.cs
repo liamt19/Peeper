@@ -12,7 +12,7 @@ namespace Peeper.Logic.Evaluation
 {
     public unsafe struct Accumulator
     {
-        public const int ByteSize = NNUE.L1_SIZE * sizeof(short);
+        public const int ByteSize = NetworkArchitecture.L1_SIZE * sizeof(short);
 
         public readonly short* Black;
         public readonly short* White;
@@ -23,8 +23,8 @@ namespace Peeper.Logic.Evaluation
 
         public Accumulator()
         {
-            Black = AlignedAllocZeroed<short>(NNUE.L1_SIZE);
-            White = AlignedAllocZeroed<short>(NNUE.L1_SIZE);
+            Black = AlignedAllocZeroed<short>(NetworkArchitecture.L1_SIZE);
+            White = AlignedAllocZeroed<short>(NetworkArchitecture.L1_SIZE);
 
             NeedsRefresh[Color.Black] = NeedsRefresh[Color.White] = true;
             Computed[Color.Black] = Computed[Color.White] = false;

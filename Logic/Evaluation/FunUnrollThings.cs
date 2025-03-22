@@ -22,7 +22,7 @@ namespace Peeper.Logic.Evaluation
         private const int N = 16;
 #endif
 
-        private const int HL = NNUE.L1_SIZE;
+        private const int HL = NetworkArchitecture.L1_SIZE;
         private const int StopBefore = HL / N;
 
 

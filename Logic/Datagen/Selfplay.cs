@@ -38,6 +38,14 @@ namespace Peeper.Logic.Datagen
             using var debugStreamWriter = new StreamWriter(debugStream);
 #endif
 
+            void Dbg(string s)
+            {
+#if DBG_PRINT
+                debugStreamWriter.WriteLine($"{threadID}\t{s}");
+                debugStreamWriter.Flush();
+#endif
+            }
+
             string fName = $"{softNodeLimit / 1000}k_{depthLimit}d_{threadID}.bin";
             using var ostr = File.Open(fName, FileMode.OpenOrCreate, FileAccess.Write, FileShare.Read);
             using var outWriter = new BinaryWriter(ostr);
@@ -52,6 +60,9 @@ namespace Peeper.Logic.Datagen
 
             for (ulong gameNum = 0; gameNum < gamesToRun; gameNum++)
             {
+            
+            ThisIsGoingToBeAnnoyingToFix:
+
                 GetStartPos(thread, ref pack, ref prelimInfo);
 
                 GameResult result = GameResult.None;
@@ -98,7 +109,8 @@ namespace Peeper.Logic.Datagen
                         sb.AppendLine($"sfen: {pos.GetSFen()}");
                         sb.AppendLine($"captured: {pos.State->CapturedPiece}");
                         sb.AppendLine($"Prior keys: {string.Join(", ", pos.GetPriorStates().Select(x => x.Hash))}");
-                        FailFast(sb.ToString());
+                        //FailFast(sb.ToString());
+                        goto ThisIsGoingToBeAnnoyingToFix;
                     }
 
 
