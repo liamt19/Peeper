@@ -24,11 +24,16 @@ namespace Peeper.Logic.Search
             SearchThread thisThread = pos.Owner;
             TranspositionTable TT = thisThread.TT;
 
+            if (!isRoot && thisThread.IsMain)
+            {
+                thisThread.CheckLimits();
+
+                if (thisThread.ShouldStop())
+                    return ScoreDraw;
+            }
+
             if (depth == 0)
                 return QSearch<NodeType>(pos, ss, alpha, beta);
-
-            if (thisThread.IsMain)
-                thisThread.CheckLimits();
 
             thisThread.Nodes++;
 
@@ -209,9 +214,7 @@ namespace Peeper.Logic.Search
                 }
 
                 if (thisThread.ShouldStop())
-                {
                     return ScoreDraw;
-                }
 
                 if (isRoot)
                 {
@@ -227,8 +230,12 @@ namespace Peeper.Logic.Search
 
                     if (rmIndex == -1)
                     {
-                        string rms = string.Join(", ", thisThread.RootMoves.ToSpan().ToArray().Select(x => x.Move));
-                        FailFast($"Move {m} wasn't in the RootMoves list! [{rms}]");
+                        var sfen = pos.GetSFen();
+                        var rms = string.Join(", ", thisThread.RootMoves.ToSpan().ToArray().Select(x => x.Move));
+                        MoveList pseudoList = new();
+                        pos.GeneratePseudoLegal(ref pseudoList);
+                        var pseudo = string.Join(", ", pseudoList.ToSpan().ToArray().Select(x => x.Move));
+                        FailFast($"{sfen}\tMove {m} wasn't in the RootMoves list! [{rms}]\n\npseudo: [{pseudo}]");
                     }
                     
 
@@ -306,8 +313,8 @@ namespace Peeper.Logic.Search
             {
                 thisThread.CheckLimits();
 
-                if (thisThread.RootDepth > 1 && thisThread.ShouldStop())
-                    return 0;
+                if (thisThread.ShouldStop())
+                    return ScoreDraw;
             }
 
             thisThread.Nodes++;
@@ -410,6 +417,8 @@ namespace Peeper.Logic.Search
 
                 pos.UnmakeMove(m);
 
+                if (thisThread.ShouldStop())
+                    return ScoreDraw;
 
                 if (score > bestScore)
                 {
