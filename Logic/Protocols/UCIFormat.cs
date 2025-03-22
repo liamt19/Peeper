@@ -69,12 +69,14 @@ namespace Peeper.Logic.Protocols
             return $"{splits[0]}[{splits[2]}] {stm} - {fmv}";
         }
 
+
+        private static readonly char[] SFenSeps = [' ', '[', ']'];
         public string ParseSFen(string sfen)
         {
             if (!sfen.Contains('['))
                 return sfen;
 
-            var splits = sfen.Split([' ', '[', ']'], StringSplitOptions.RemoveEmptyEntries);
+            var splits = sfen.Split(SFenSeps, StringSplitOptions.RemoveEmptyEntries);
             var placements = splits[0];
             var hand = splits[1];
             var stm = splits[2] == "w" ? "b" : "w";

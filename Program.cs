@@ -6,6 +6,7 @@ using Peeper.Logic.Evaluation;
 using Peeper.Logic.Search;
 using Peeper.Logic.Threads;
 using Peeper.Logic.USI;
+using Peeper.Logic.Util.PGN;
 using System.Text;
 
 namespace Peeper
@@ -96,14 +97,25 @@ namespace Peeper
                 {
                     HandleBenchCommand(input);
                 }
-                else if (input.EqualsIgnoreCase("pgn"))
-                {
-                    PGNToKIF.ParseFromSTDIn();
-                }
                 else if (input.StartsWith("datagen"))
                 {
                     var splits = input.ToLower().Split(' ', StringSplitOptions.RemoveEmptyEntries);
                     HandleDatagenCommand(splits);
+                }
+                else if (input.EqualsIgnoreCase("pgn"))
+                {
+                    PGNToKIF.ParseFromSTDIn();
+                }
+                else if (input.StartsWithIgnoreCase("recreate"))
+                {
+                    int? side = param.Length > 0 ? StringToColor(param[0]) : null;
+                    GameRecreation.ParseFromSTDIn(side);
+                }
+                else if (input.EqualsIgnoreCase("wait"))
+                {
+                    Thread.Sleep(50);
+                    GlobalSearchPool.WaitForSearchFinished();
+                    Thread.Sleep(100);
                 }
                 else
                 {

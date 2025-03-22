@@ -6,7 +6,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 
-namespace Peeper.Logic.Util
+namespace Peeper.Logic.Util.PGN
 {
     public static unsafe class PGNToKIF
     {
@@ -44,25 +44,17 @@ namespace Peeper.Logic.Util
             Console.OutputEncoding = Encoding.Unicode;
 
             Console.WriteLine("Paste your PGN below:\r\n");
-            string full = ReadSTDIn();
-            var lines = full.Split(Environment.NewLine);
-
-            var startpos = InitialFEN_UCI;
-            var setup = lines.Where(x => x.StartsWith("[FEN ")).ToArray();
-            if (setup.Length != 0)
-                startpos = Regex.Match(setup.First(), @"\[FEN ""(.+?)""\]").Groups[1].Value;
-
-            bool isSetup = (setup.Length != 0);
-
-            startpos = UCIFormatter.ParseSFen(startpos);
+            string pgnStr = GameRecreation.ReadPGNFromSTDIn();
+            
+            var startpos = GameRecreation.PGNStartpos(pgnStr, out bool isSetup);
             Position pos = new Position(startpos, false, null);
 
             List<string> moveStrings = [];
 
-            //  Skip tags
-            var movesList = string.Join(" ", lines.SkipWhile(x => !x.StartsWith("1. ")));
+            var lines = pgnStr.Split(Environment.NewLine);
 
-            movesList = movesList.TrimEnd();
+            //  Skip tags
+            var movesList = string.Join(" ", lines.SkipWhile(x => !x.StartsWith("1. "))).TrimEnd();
 
             string gameResult = GetGameResult(movesList);
 
@@ -94,7 +86,7 @@ namespace Peeper.Logic.Util
                 string bMoveStr = m.Groups[2].Value;
                 string wMoveStr = m.Groups[3].Value;
 
-                blackMove = ParsePGNMove(pos, bMoveStr);
+                blackMove = GameRecreation.ParsePGNMove(pos, bMoveStr);
                 moveStrings.Add(FormatMove(pos, blackMove, priorSquare, printNumber++));
                 priorSquare = blackMove.To;
                 pos.MakeMove(blackMove);
@@ -104,7 +96,7 @@ namespace Peeper.Logic.Util
                     break;
                 }
 
-                whiteMove = ParsePGNMove(pos, wMoveStr);
+                whiteMove = GameRecreation.ParsePGNMove(pos, wMoveStr);
                 moveStrings.Add(FormatMove(pos, whiteMove, priorSquare, printNumber++));
                 priorSquare = whiteMove.To;
                 pos.MakeMove(whiteMove);
@@ -142,31 +134,6 @@ namespace Peeper.Logic.Util
 
             Console.WriteLine();
             Console.OutputEncoding = backupEncoding;
-        }
-
-
-        private static string ReadSTDIn()
-        {
-            int blankLines = 0;
-            bool started = false;
-            StringBuilder sb = new();
-            while (blankLines < 2)
-            {
-                var str = Console.ReadLine();
-                if (string.IsNullOrEmpty(str))
-                {
-                    blankLines += (started ? 1 : 0);
-                    continue;
-                }
-
-                started = !str.StartsWith('[');
-                sb.AppendLine(str);
-
-                if (started && (str.Contains("*") || str.Contains("1-0") || str.Contains("0-1") || str.Contains("1/2-1/2")))
-                    break;
-            }
-
-            return sb.ToString();
         }
 
 
@@ -278,74 +245,6 @@ namespace Peeper.Logic.Util
             }
 
             return sb.ToString();
-        }
-
-
-        private static Move ParsePGNMove(Position pos, string moveStr)
-        {
-            MoveList list = new();
-            int size = pos.GenerateLegal(ref list);
-
-            bool isPromoted = false;
-            if (moveStr.StartsWith('+'))
-            {
-                isPromoted = true;
-                moveStr = moveStr[1..];
-            }
-
-            int type = SFenToPiece(moveStr[0]);
-            if (isPromoted)
-                type = Promote(type);
-
-            //  Move was capture, unnecessary
-            moveStr = moveStr.Replace("x", string.Empty);
-
-            bool promoting = false;
-            string dstStr = moveStr[^2..];
-            if (moveStr.EndsWith('+'))
-            {
-                promoting = true;
-                moveStr = moveStr[..^1];
-                dstStr = moveStr[^2..];
-            }
-
-            int dst = UCIFormat.ParseSquare(dstStr);
-
-            if (moveStr.Contains('@'))
-                return Move.MakeDrop(type, dst);
-
-            List<Move> candidates = [];
-            for (int i = 0; i < size; i++)
-            {
-                var move = list[i].Move;
-                if (move.IsDrop)
-                    continue;
-
-                int movingType = pos.bb.GetPieceAtIndex(move.From);
-
-                if (move.To == dst && move.IsPromotion == promoting && movingType == type)
-                    candidates.Add(move);
-            }
-
-            if (candidates.Count == 1)
-                return candidates[0];
-
-
-            if (moveStr.Length == 5)
-            {
-                int src = UCIFormat.ParseSquare(moveStr[1..2]);
-                return promoting ? Move.MakePromo(src, dst) : Move.MakeNormal(src, dst);
-            }
-
-            char disambig = moveStr[1];
-            if (char.IsDigit(disambig))
-            {
-                int srcRank = UCIFormat.ParseRankChar(disambig);
-                return candidates.Where(x => GetIndexRank(x.From) == srcRank).First();
-            }
-
-            int srcFile = UCIFormat.ParseFileChar(disambig);
-            return candidates.Where(x => GetIndexFile(x.From) == srcFile).First();
         }
 
 
