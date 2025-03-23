@@ -174,7 +174,7 @@ namespace Peeper.Logic.Search.Ordering
                 int thisPiece = pos.MovedPiece(m);
                 int captured = pos.GetPieceAtIndex(m.To);
 
-                MoveList[i].Score = GetHandValue(captured) * 10 - GetHandValue(thisPiece);
+                MoveList[i].Score = (captured * 100) - thisPiece;
             }
         }
 
@@ -200,7 +200,7 @@ namespace Peeper.Logic.Search.Ordering
                 if (captured != None)
                 {
                     int thisPiece = pos.MovedPiece(m);
-                    MoveList[i].Score = GetHandValue(captured) * 10 - GetHandValue(thisPiece);
+                    MoveList[i].Score = (captured * 100) - thisPiece;
                 }
                 else
                 {
