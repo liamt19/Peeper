@@ -1,6 +1,6 @@
 ﻿
 #define MP_NM
-//#define MP_QS
+#define MP_QS
 
 using Peeper.Logic.Data;
 using Peeper.Logic.Evaluation;
