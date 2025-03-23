@@ -9,19 +9,15 @@ namespace Peeper.Logic.Search.History
 
         public readonly CaptureHistoryTable CaptureHistory;
         public readonly QuietHistoryTable QuietHistory;
+        public readonly DropHistoryTable DropHistory;
         public readonly ContinuationHistory Continuations;
 
         public ThreadHistory()
         {
-            Continuations = new ContinuationHistory();
-            QuietHistory = new QuietHistoryTable();
             CaptureHistory = new CaptureHistoryTable();
-        }
-
-        [MethodImpl(Inline)]
-        public int QuietScore(int stm, Move m)
-        {
-            return QuietHistory[stm, m];
+            QuietHistory = new QuietHistoryTable();
+            DropHistory = new DropHistoryTable();
+            Continuations = new ContinuationHistory();
         }
 
         [MethodImpl(Inline)]
@@ -30,18 +26,29 @@ namespace Peeper.Logic.Search.History
             return CaptureHistory[pc, pt, toSquare, capturedPt];
         }
 
+        [MethodImpl(Inline)]
+        public int QuietScore(int stm, Move m)
+        {
+            if (m.IsDrop)
+                return DropHistory[stm, m];
+
+            return QuietHistory[stm, m];
+        }
+
 
         public void Clear()
         {
-            QuietHistory.Clear();
             CaptureHistory.Clear();
+            QuietHistory.Clear();
+            DropHistory.Clear();
             Continuations.Clear();
         }
 
         public void Dispose()
         {
-            QuietHistory.Dispose();
             CaptureHistory.Dispose();
+            QuietHistory.Dispose();
+            DropHistory.Dispose();
             Continuations.Dispose();
         }
     }

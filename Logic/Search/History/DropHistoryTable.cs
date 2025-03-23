@@ -1,15 +1,14 @@
 ﻿
-using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 namespace Peeper.Logic.Search.History
 {
-    public readonly unsafe struct QuietHistoryTable
+    public readonly unsafe struct DropHistoryTable
     {
         private readonly StatEntry* _History;
-        private const int HistoryElements = ColorNB * SquareNB * SquareNB;
+        private const int HistoryElements = ColorNB * PieceNB * SquareNB;
 
-        public QuietHistoryTable()
+        public DropHistoryTable()
         {
             _History = AlignedAllocZeroed<StatEntry>(HistoryElements);
         }
@@ -26,10 +25,9 @@ namespace Peeper.Logic.Search.History
             set => _History[HistoryIndex(pc, m)] = value;
         }
 
-        [MethodImpl(Inline)]
         public static int HistoryIndex(int pc, Move m)
         {
-            return (pc * SquareNB * SquareNB) + m.MoveMask;
+            return (pc * PieceNB * SquareNB) + (m.DroppedPiece * SquareNB) + m.To;
         }
 
         public void Dispose() => NativeMemory.AlignedFree(_History);

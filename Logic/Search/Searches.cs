@@ -127,8 +127,9 @@ namespace Peeper.Logic.Search
 
             MovesLoop:
 
-            int legalMoves = 0, playedMoves = 0;
+            int lmpMoves = LMP(depth);
 
+            int legalMoves = 0, playedMoves = 0;
             int quietCount = 0, captureCount = 0;
             Span<Move> quietMoves = stackalloc Move[64];
             Span<Move> captureMoves = stackalloc Move[32];
@@ -163,6 +164,16 @@ namespace Peeper.Logic.Search
                 bool isQuiet = !isCapture;
 
                 int R = LMR(depth, legalMoves);
+
+                if (!isRoot && !IsLoss(bestScore))
+                {
+                    if (legalMoves >= lmpMoves)
+                        mp.StartSkippingQuiets();
+
+                    int threshold = -200 * depth;
+                    if (!SEE_GE(pos, m, threshold))
+                        continue;
+                }
 
                 ss->CurrentMove = m;
                 ss->ContinuationHistory = history.Continuations[0, 0, 0];

@@ -26,6 +26,7 @@ namespace Peeper.Logic.Data
         private static readonly Bitmask** RayBB;
 
         private static readonly int** LMRTable;
+        private static readonly int* LMPTable;
 
         public static Bitmask PawnMoveMask(int color, int sq) => PawnMasks[color * SquareNB + sq];
         public static Bitmask LanceMoveMask(int color, int sq) => LanceMasks[color * SquareNB + sq];
@@ -48,6 +49,7 @@ namespace Peeper.Logic.Data
         public static Bitmask Line(int a, int b) => LineBB[a][b];
         public static Bitmask Ray(int a, int b) => RayBB[a][b];
 
+        public static int LMP(int depth) => LMPTable[depth];
         public static int LMR(int depth, int moveIndex) => LMRTable[depth][moveIndex];
 
         static Precomputed()
@@ -71,6 +73,7 @@ namespace Peeper.Logic.Data
             LineBB = (Bitmask**)AlignedAllocZeroed((nuint)sizeof(Bitmask*) * SquareNB);
             RayBB = (Bitmask**)AlignedAllocZeroed((nuint)sizeof(Bitmask*) * SquareNB);
 
+            LMPTable = AlignedAllocZeroed<int>(MaxPly);
             LMRTable = (int**)AlignedAllocZeroed((nuint)sizeof(int*) * MaxPly);
 
             CreatePieceRays();
@@ -193,16 +196,18 @@ namespace Peeper.Logic.Data
 
         private static void CreateReductions()
         {
+            
             for (int depth = 0; depth < MaxPly; depth++)
             {
                 LMRTable[depth] = AlignedAllocZeroed<int>(MoveListSize);
-
                 for (int moveIndex = 0; moveIndex < MoveListSize; moveIndex++)
                 {
                     var lnDepth = Math.Log(Math.Max(depth, 1));
                     var lnIndex = Math.Log(Math.Max(moveIndex, 1));
                     LMRTable[depth][moveIndex] = (int)(0.25 + lnDepth * lnIndex / 2.25);
                 }
+
+                LMPTable[depth] = 3 + 2 * (depth * depth);
             }
         }
 
