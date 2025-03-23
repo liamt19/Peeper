@@ -111,7 +111,7 @@ namespace Peeper.Logic.Search.Ordering
                     int added = pos.AddCaptures(ref MoveList);
                     LastIndex = MoveList.Size;
 
-                    ScoreQuiets();
+                    ScoreCaptures();
 
                     Stage++;
                     goto case MovePickerStage.QS_PlayCaptures;
