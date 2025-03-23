@@ -62,5 +62,7 @@ namespace Peeper.Logic.Data
 
         public static bool operator ==(Move left, ScoredMove right) => left.Equals(right);
         public static bool operator !=(Move left, ScoredMove right) => !left.Equals(right);
+
+        public static implicit operator bool(Move m) => !m.IsNull();
     }
 }

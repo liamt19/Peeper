@@ -112,7 +112,8 @@ namespace Peeper.Logic.Search
 
             eval = ss->StaticEval = NNUE.GetEvaluation(pos);
 
-            if (depth <= RFPDepth
+            if (UseRFP
+                && depth <= RFPDepth
 #if TODO
                 && ttMove.IsNull()
                 && !IsWin(eval)
@@ -121,6 +122,26 @@ namespace Peeper.Logic.Search
                 && eval - RFPMargin(depth) >= beta)
             {
                 return eval;
+            }
+
+            if (UseNMP
+                && depth >= NMPDepth
+                && ss->StaticEval >= beta
+                && (ss - 1)->CurrentMove)
+            {
+                int reduction = NMPBaseRed + (depth / NMPDepthDiv);
+                ss->CurrentMove = Move.Null;
+                ss->ContinuationHistory = history.Continuations[0][0][0];
+
+                pos.MakeNullMove();
+                score = -Negamax<NonPVNode>(pos, ss + 1, -beta, -beta + 1, depth - reduction);
+                pos.UnmakeNullMove();
+
+                if (score >= beta)
+                {
+                    return IsWin(score) ? beta : score;
+                }
+
             }
 
 
