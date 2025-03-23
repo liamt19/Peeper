@@ -17,5 +17,9 @@ namespace Peeper.Logic.Search
 
         public static int RFPMult = 100;
         public static int RFPDepth = 5;
+
+        public static int StatBonusMult = 100;
+        public static int StatBonusSub = 80;
+        public static int StatBonusMax = 1600;
     }
 }

@@ -269,7 +269,7 @@ namespace Peeper.Logic.Core
 
 
         [MethodImpl(Inline)]
-        public bool IsLegal(in Move move) => IsLegal(move, State->KingSquares[ToMove], State->KingSquares[Not(ToMove)], State->BlockingPieces[ToMove]);
+        public bool IsLegal(Move move) => IsLegal(move, State->KingSquares[ToMove], State->KingSquares[Not(ToMove)], State->BlockingPieces[ToMove]);
 
         [MethodImpl(Inline)]
         public bool IsLegal(Move move, int ourKing, int theirKing, Bitmask pinnedPieces)
@@ -358,6 +358,13 @@ namespace Peeper.Logic.Core
             }
         
             return (!State->BlockingPieces[ourColor].HasBit(moveFrom) || Ray(moveFrom, moveTo).HasBit(ourKing));
+        }
+
+        [MethodImpl(Inline)]
+        public bool IsPseudoLegal(Move move)
+        {
+            //  TODO
+            return IsLegal(move);
         }
 
 

@@ -1,7 +1,6 @@
-﻿
-using static Peeper.Logic.Evaluation.MaterialCounting;
+﻿using static Peeper.Logic.Evaluation.MaterialCounting;
 
-namespace Peeper.Logic.Search
+namespace Peeper.Logic.Search.Ordering
 {
     public static unsafe class MoveOrdering
     {
@@ -59,7 +58,7 @@ namespace Peeper.Logic.Search
                 else if (captured != None)
                 {
                     //  Approximately mvv lva.
-                    sm.Score = (GetHandValue(captured) * 10) - GetHandValue(thisPiece);
+                    sm.Score = GetHandValue(captured) * 10 - GetHandValue(thisPiece);
                 }
             }
         }

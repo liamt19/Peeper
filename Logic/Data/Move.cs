@@ -27,6 +27,7 @@ namespace Peeper.Logic.Data
 
         public readonly int To => (int)((Data >> 0) & 127);
         public readonly int From => (int)((Data >> 7) & 127);
+        public readonly int MoveMask => (To * SquareNB + From);
 
         public (int from, int to) Unpack() => (From, To);
 
@@ -62,5 +63,7 @@ namespace Peeper.Logic.Data
 
         public static bool operator ==(Move left, ScoredMove right) => left.Equals(right);
         public static bool operator !=(Move left, ScoredMove right) => !left.Equals(right);
+
+        public static implicit operator bool(Move m) => !m.IsNull();
     }
 }

@@ -1,13 +1,13 @@
 ﻿
-using Peeper.Logic.Data;
+#define MP_NM
+//#define MP_QS
+
 using Peeper.Logic.Evaluation;
 using Peeper.Logic.Search.History;
+using Peeper.Logic.Search.Ordering;
 using Peeper.Logic.Threads;
 using Peeper.Logic.Transposition;
 using System.Text;
-using System.Text.RegularExpressions;
-using System.Threading;
-using System.Xml.Linq;
 
 using static Peeper.Logic.Evaluation.MaterialCounting;
 using static Peeper.Logic.Transposition.TTEntry;
@@ -37,7 +37,7 @@ namespace Peeper.Logic.Search
 
             thisThread.Nodes++;
 
-            ref HistoryTable history = ref thisThread.History;
+            ref ThreadHistory history = ref thisThread.History;
             ref Bitboard bb = ref pos.bb;
 
             int us = pos.ToMove;
@@ -124,11 +124,19 @@ namespace Peeper.Logic.Search
             }
 
 
-        MovesLoop:
+            MovesLoop:
 
-            int legalMoves = 0;
-            int playedMoves = 0;
+            int legalMoves = 0, playedMoves = 0;
 
+            Span<Move> quietMoves = stackalloc Move[32];
+            int quietCount = 0;
+
+#if MP_NM
+            MovePicker mp = MovePicker.Negamax(pos, ttMove);
+            Move m;
+            while (m = mp.Next())
+            {
+#else
             MoveList list = new();
             int size = pos.GeneratePseudoLegal(ref list);
             MoveOrdering.AssignScores(pos, ref list, ttMove);
@@ -136,19 +144,25 @@ namespace Peeper.Logic.Search
             for (int i = 0; i < size; i++)
             {
                 Move m = MoveOrdering.OrderNextMove(ref list, i);
+#endif
 
                 if (!pos.IsLegal(m))
                 {
                     continue;
                 }
 
+                legalMoves++;
+
                 var (moveFrom, moveTo) = m.Unpack();
 
-                legalMoves++;
+                int ourPiece = pos.MovedPiece(m);
+                int theirPiece = bb.GetPieceAtIndex(moveTo);
+                bool isQuiet = theirPiece == None && !m.IsDrop;
+
                 int R = LMR(depth, legalMoves);
 
                 ss->CurrentMove = m;
-                ss->ContinuationHistory = history.Continuations[0][0][0, 0, 0];
+                ss->ContinuationHistory = history.Continuations[0, 0, 0];
 
                 ulong prevNodes = thisThread.Nodes;
 
@@ -277,10 +291,19 @@ namespace Peeper.Logic.Search
 
                         if (score >= beta)
                         {
+                            UpdateStats(pos, ss, bestMove, bestScore, depth, quietMoves[..quietCount]);
                             break;
                         }
 
                         alpha = score;
+                    }
+                }
+
+                if (bestMove != m)
+                {
+                    if (isQuiet && quietCount < 32)
+                    {
+                        quietMoves[quietCount++] = m;
                     }
                 }
 
@@ -320,7 +343,7 @@ namespace Peeper.Logic.Search
             thisThread.Nodes++;
 
             TranspositionTable TT = thisThread.TT;
-            ref HistoryTable history = ref thisThread.History;
+            ref ThreadHistory history = ref thisThread.History;
             ref Bitboard bb = ref pos.bb;
 
             int us = pos.ToMove;
@@ -382,8 +405,14 @@ namespace Peeper.Logic.Search
 
             alpha = Math.Max(alpha, eval);
 
-        MovesLoop:
+            MovesLoop:
 
+#if MP_QS
+            MovePicker mp = MovePicker.QSearch(pos, ttMove);
+            Move m;
+            while (m = mp.Next())
+            {
+#else
             MoveList list = new();
             int size = pos.GenerateQSearch(ref list);
             MoveOrdering.AssignQSearchScores(pos, ref list, ttMove);
@@ -391,6 +420,7 @@ namespace Peeper.Logic.Search
             for (int i = 0; i < size; i++)
             {
                 Move m = MoveOrdering.OrderNextMove(ref list, i);
+#endif
 
                 if (!pos.IsLegal(m))
                 {
@@ -406,7 +436,7 @@ namespace Peeper.Logic.Search
                 }
 
                 ss->CurrentMove = m;
-                ss->ContinuationHistory = history.Continuations[0][0][0, 0, 0];
+                ss->ContinuationHistory = history.Continuations[0, 0, 0];
 
                 pos.MakeMove(m);
 
@@ -458,6 +488,37 @@ namespace Peeper.Logic.Search
             tte->Update(pos.Hash, MakeTTScore((short)bestScore, ss->Ply), bound, 0, bestMove, rawEval, TT.Age, ttPV);
 
             return bestScore;
+        }
+
+
+        private static void UpdateStats(Position pos, SearchStack* ss, Move bestMove, int bestScore, int depth, Span<Move> quietMoves)
+        {
+            ref ThreadHistory history = ref pos.Owner.History;
+            var (bmFrom, bmTo) = bestMove.Unpack();
+
+            ref Bitboard bb = ref pos.bb;
+            int us = pos.ToMove;
+
+            int thisPiece = pos.MovedPiece(bestMove);
+            int capturedPiece = bb.GetPieceAtIndex(bmTo);
+
+            if (capturedPiece == None && !bestMove.IsDrop)
+            {
+#if NO
+                if (quietCount == 0 && depth <= 3)
+                    return;
+#endif
+                int bonus = StatBonus(depth);
+                int malus = -bonus;
+
+                history.QuietHistory[us, bestMove] <<= bonus;
+
+                for (int i = 0; i < quietMoves.Length; i++)
+                {
+                    Move m = quietMoves[i];
+                    history.QuietHistory[us, m] <<= malus;
+                }
+            }
         }
 
 
@@ -584,10 +645,9 @@ namespace Peeper.Logic.Search
         }
 
 
-        private static int RFPMargin(int depth)
-        {
-            return (depth) * RFPMult;
-        }
+        private static int RFPMargin(int depth) => depth * RFPMult;
+
+        private static int StatBonus(int depth) => Math.Min(depth * StatBonusMult - StatBonusSub, StatBonusMax);
 
         private static void AppendToPV(Move* pv, Move move, Move* childPV)
         {

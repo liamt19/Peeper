@@ -112,15 +112,33 @@ namespace Peeper.Logic.Core
             AddDropMoves(ref list);
         }
 
-        public void AddCaptures(ref MoveList list)
+        public int AddCaptures(ref MoveList list)
         {
             Bitmask targets = bb.Colors[Not(ToMove)];
+            int prevSize = list.Size;
 
             AddPawnMoves(ref list, targets);
             for (int type = Pawn + 1; type < PieceNB; type++)
             {
                 AddNormalMoves(ref list, type, targets);
             }
+
+            return list.Size - prevSize;
+        }
+
+        public int AddQuiets(ref MoveList list)
+        {
+            Bitmask targets = AllMask ^ bb.Occupancy;
+            int prevSize = list.Size;
+
+            AddPawnMoves(ref list, targets);
+            for (int type = Pawn + 1; type < PieceNB; type++)
+            {
+                AddNormalMoves(ref list, type, targets);
+            }
+            AddDropMoves(ref list);
+
+            return list.Size - prevSize;
         }
 
 
