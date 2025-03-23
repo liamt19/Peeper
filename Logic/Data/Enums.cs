@@ -36,6 +36,16 @@ namespace Peeper.Logic.Data
 
         public static ReadOnlySpan<int> DroppableTypes => [Pawn, Lance, Knight, Silver, Gold, Bishop, Rook];
 
+        public static bool CanBeDropped(int type)
+        {
+            return type is Pawn or Lance or Knight or Silver or Gold or Bishop or Rook;
+        }
+
+        public static bool CanBeDroppedOn(int color, int type, int sq)
+        {
+            return CanBeDropped(type) && Precomputed.DropMask(color, type).HasBit(sq);
+        }
+
         public static bool IsPromoted(int type)
         {
             return type is PawnPromoted or LancePromoted or KnightPromoted or SilverPromoted or BishopPromoted or RookPromoted;

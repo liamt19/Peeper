@@ -99,6 +99,10 @@ namespace Peeper.Logic.Core
         [MethodImpl(Inline)]
         public int GetPieceAtIndex(int sq) => bb.GetPieceAtIndex(sq);
 
+        [MethodImpl(Inline)]
+        public int GetColorAtIndex(int sq) => bb.GetColorAtIndex(sq);
+
+
         public bool TryMakeMove(string moveStr)
         {
             if (TryFindMove(moveStr, out Move move))
@@ -363,8 +367,52 @@ namespace Peeper.Logic.Core
         [MethodImpl(Inline)]
         public bool IsPseudoLegal(Move move)
         {
-            //  TODO
-            return IsLegal(move);
+            var (moveFrom, moveTo) = move.Unpack();
+            int thisPiece = MovedPiece(move);
+            int destPiece = GetPieceAtIndex(moveTo);
+
+            if (move.IsDrop)
+            {
+                if (destPiece is not None)
+                    return false;
+
+                //  Is droppable, and is a valid square for that type of piece
+                if (!Piece.CanBeDroppedOn(ToMove, move.DroppedPiece, moveTo))
+                    return false;
+
+                if (State->Hands[ToMove].NumHeld(move.DroppedPiece) is 0)
+                    return false;
+
+                // nifu, uchifuzume, and drops when in check are handled in IsLegal
+            }
+            else
+            {
+                if (thisPiece is None || GetColorAtIndex(moveFrom) != ToMove)
+                    return false;
+
+                if (destPiece is not None && (GetColorAtIndex(moveTo) == ToMove || destPiece is King))
+                    return false;
+
+                if (move.IsPromotion)
+                {
+                    if (!Piece.CanPromote(thisPiece))
+                        return false;
+
+                    var promoSquares = (ToMove == Black ? BlackPromotionSquares : WhitePromotionSquares);
+                    if (!promoSquares.HasBit(moveFrom) && !promoSquares.HasBit(moveTo))
+                        return false;
+                }
+                else
+                {
+                    if (ForcedPromotionSquares(ToMove, thisPiece).HasBit(moveTo))
+                        return false;
+                }
+
+                if (!bb.GetPieceAttacks(ToMove, thisPiece, moveFrom, bb.Occupancy).HasBit(moveTo))
+                    return false;
+            }
+
+            return true;
         }
 
 

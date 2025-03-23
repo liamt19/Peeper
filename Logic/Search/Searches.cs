@@ -157,7 +157,8 @@ namespace Peeper.Logic.Search
 
                 int ourPiece = pos.MovedPiece(m);
                 int theirPiece = bb.GetPieceAtIndex(moveTo);
-                bool isQuiet = theirPiece == None && !m.IsDrop;
+                bool isCapture = theirPiece != None;
+                bool isQuiet = !isCapture;
 
                 int R = LMR(depth, legalMoves);
 
@@ -502,7 +503,7 @@ namespace Peeper.Logic.Search
             int thisPiece = pos.MovedPiece(bestMove);
             int capturedPiece = bb.GetPieceAtIndex(bmTo);
 
-            if (capturedPiece == None && !bestMove.IsDrop)
+            if (capturedPiece == None)
             {
 #if NO
                 if (quietCount == 0 && depth <= 3)
