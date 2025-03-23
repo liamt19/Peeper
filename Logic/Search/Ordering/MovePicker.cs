@@ -167,14 +167,17 @@ namespace Peeper.Logic.Search.Ordering
 
         private void ScoreCaptures()
         {
+            ref ThreadHistory history = ref pos.Owner.History;
             for (int i = MoveIndex; i < LastIndex; i++)
             {
                 Move m = MoveList[i].Move;
 
+                var (moveFrom, moveTo) = m.Unpack();
                 int thisPiece = pos.MovedPiece(m);
-                int captured = pos.GetPieceAtIndex(m.To);
+                int captured = pos.GetPieceAtIndex(moveTo);
 
-                MoveList[i].Score = GetHandValue(captured) * 10 - GetHandValue(thisPiece);
+                MoveList[i].Score = GetHandValue(captured) * 4 - GetHandValue(thisPiece);
+                MoveList[i].Score += history.CaptureScore(STM, thisPiece, moveTo, captured);
             }
         }
 

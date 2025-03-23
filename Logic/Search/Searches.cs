@@ -2,6 +2,7 @@
 #define MP_NM
 //#define MP_QS
 
+using Peeper.Logic.Data;
 using Peeper.Logic.Evaluation;
 using Peeper.Logic.Search.History;
 using Peeper.Logic.Search.Ordering;
@@ -128,8 +129,9 @@ namespace Peeper.Logic.Search
 
             int legalMoves = 0, playedMoves = 0;
 
-            Span<Move> quietMoves = stackalloc Move[32];
-            int quietCount = 0;
+            int quietCount = 0, captureCount = 0;
+            Span<Move> quietMoves = stackalloc Move[64];
+            Span<Move> captureMoves = stackalloc Move[32];
 
 #if MP_NM
             MovePicker mp = MovePicker.Negamax(pos, ttMove);
@@ -292,7 +294,7 @@ namespace Peeper.Logic.Search
 
                         if (score >= beta)
                         {
-                            UpdateStats(pos, ss, bestMove, bestScore, depth, quietMoves[..quietCount]);
+                            UpdateStats(pos, ss, bestMove, bestScore, depth, quietMoves[..quietCount], captureMoves[..captureCount]);
                             break;
                         }
 
@@ -302,9 +304,13 @@ namespace Peeper.Logic.Search
 
                 if (bestMove != m)
                 {
-                    if (isQuiet && quietCount < 32)
+                    if (isQuiet && quietCount < 64)
                     {
                         quietMoves[quietCount++] = m;
+                    }
+                    else if (isCapture && captureCount < 32)
+                    {
+                        captureMoves[captureCount++] = m;
                     }
                 }
 
@@ -492,7 +498,7 @@ namespace Peeper.Logic.Search
         }
 
 
-        private static void UpdateStats(Position pos, SearchStack* ss, Move bestMove, int bestScore, int depth, Span<Move> quietMoves)
+        private static void UpdateStats(Position pos, SearchStack* ss, Move bestMove, int bestScore, int depth, Span<Move> quietMoves, Span<Move> captureMoves)
         {
             ref ThreadHistory history = ref pos.Owner.History;
             var (bmFrom, bmTo) = bestMove.Unpack();
@@ -503,14 +509,19 @@ namespace Peeper.Logic.Search
             int thisPiece = pos.MovedPiece(bestMove);
             int capturedPiece = bb.GetPieceAtIndex(bmTo);
 
-            if (capturedPiece == None)
+            int bonus = StatBonus(depth);
+            int malus = -bonus;
+
+            if (capturedPiece != None)
+            {
+                history.CaptureHistory[us, thisPiece, bmTo, capturedPiece] <<= bonus;
+            }
+            else
             {
 #if NO
                 if (quietCount == 0 && depth <= 3)
                     return;
 #endif
-                int bonus = StatBonus(depth);
-                int malus = -bonus;
 
                 history.QuietHistory[us, bestMove] <<= bonus;
 
@@ -519,6 +530,16 @@ namespace Peeper.Logic.Search
                     Move m = quietMoves[i];
                     history.QuietHistory[us, m] <<= malus;
                 }
+            }
+
+            for (int i = 0; i < captureMoves.Length; i++)
+            {
+                Move m = captureMoves[i];
+                var (moveFrom, moveTo) = m.Unpack();
+                thisPiece = bb.GetPieceAtIndex(moveFrom);
+                capturedPiece = bb.GetPieceAtIndex(moveTo);
+
+                history.CaptureHistory[us, thisPiece, moveTo, capturedPiece] <<= malus;
             }
         }
 

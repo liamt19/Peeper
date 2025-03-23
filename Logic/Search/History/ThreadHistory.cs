@@ -7,6 +7,7 @@ namespace Peeper.Logic.Search.History
     {
         public const int NormalClamp = 16384;
 
+        public readonly CaptureHistoryTable CaptureHistory;
         public readonly QuietHistoryTable QuietHistory;
         public readonly ContinuationHistory Continuations;
 
@@ -14,6 +15,7 @@ namespace Peeper.Logic.Search.History
         {
             Continuations = new ContinuationHistory();
             QuietHistory = new QuietHistoryTable();
+            CaptureHistory = new CaptureHistoryTable();
         }
 
         [MethodImpl(Inline)]
@@ -22,16 +24,24 @@ namespace Peeper.Logic.Search.History
             return QuietHistory[stm, m];
         }
 
+        [MethodImpl(Inline)]
+        public int CaptureScore(int pc, int pt, int toSquare, int capturedPt)
+        {
+            return CaptureHistory[pc, pt, toSquare, capturedPt];
+        }
+
 
         public void Clear()
         {
             QuietHistory.Clear();
+            CaptureHistory.Clear();
             Continuations.Clear();
         }
 
         public void Dispose()
         {
             QuietHistory.Dispose();
+            CaptureHistory.Dispose();
             Continuations.Dispose();
         }
     }
