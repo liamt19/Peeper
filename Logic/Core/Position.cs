@@ -233,6 +233,32 @@ namespace Peeper.Logic.Core
         }
 
 
+        public void MakeNullMove()
+        {
+            Unsafe.CopyBlock(NextState, State, BoardState.StateCopySize);
+
+            if (UpdateNN)
+            {
+                NNUE.MakeNullMove(this);
+            }
+
+            State++;
+            MoveNumber++;
+            ToMove = Not(ToMove);
+            State->Hash.ZobristChangeToMove();
+
+            UpdateState();
+        }
+
+
+        public void UnmakeNullMove()
+        {
+            State--;
+            MoveNumber--;
+            ToMove = Not(ToMove);
+        }
+
+
         [MethodImpl(Inline)]
         private void UpdateHash(int color, int type, int sq)
         {

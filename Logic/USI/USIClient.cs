@@ -272,6 +272,9 @@ namespace Peeper.Logic.USI
             Options[nameof(RFPDepth)].SetMinMax(1, 10);
             Options[nameof(RFPMult)].SetMinMax(50, 140);
 
+            Options[nameof(NMPDepth)].AutoMinMax();
+            Options[nameof(NMPBaseRed)].AutoMinMax();
+            Options[nameof(NMPDepthDiv)].AutoMinMax();
 
             foreach (var optName in Options.Keys)
             {

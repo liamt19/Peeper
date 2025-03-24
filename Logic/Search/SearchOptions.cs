@@ -13,9 +13,16 @@ namespace Peeper.Logic.Search
 
         public static bool CuteChessWorkaround = false;
 
+        public const bool UseRFP = true;
+        public const bool UseNMP = true;
+
         public static int AspWindow = 0;
 
         public static int RFPMult = 100;
         public static int RFPDepth = 5;
+
+        public static int NMPDepth = 5;
+        public static int NMPBaseRed = 3;
+        public static int NMPDepthDiv = 4;
     }
 }
