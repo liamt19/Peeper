@@ -15,6 +15,7 @@ namespace Peeper.Logic.Search
 
         public const bool UseRFP = true;
         public const bool UseNMP = true;
+        public const bool UseRazoring = true;
 
         public static int AspWindow = 0;
 
@@ -24,5 +25,8 @@ namespace Peeper.Logic.Search
         public static int NMPDepth = 5;
         public static int NMPBaseRed = 3;
         public static int NMPDepthDiv = 4;
+
+        public static int RazoringMaxDepth = 4;
+        public static int RazoringMult = 280;
     }
 }
