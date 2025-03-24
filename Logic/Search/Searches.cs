@@ -112,6 +112,7 @@ namespace Peeper.Logic.Search
 
             eval = ss->StaticEval = NNUE.GetEvaluation(pos);
 
+
             if (UseRFP
                 && depth <= RFPDepth
 #if TODO
@@ -123,6 +124,19 @@ namespace Peeper.Logic.Search
             {
                 return eval;
             }
+
+
+            if (UseRazoring
+                && !isPV
+                && depth <= RazoringMaxDepth
+                && alpha < 2000
+                && ss->StaticEval + RazoringMult * depth <= alpha)
+            {
+                score = QSearch<NodeType>(pos, ss, alpha, alpha + 1);
+                if (score <= alpha)
+                    return score;
+            }
+
 
             if (UseNMP
                 && depth >= NMPDepth
@@ -141,11 +155,10 @@ namespace Peeper.Logic.Search
                 {
                     return IsWin(score) ? beta : score;
                 }
-
             }
 
 
-        MovesLoop:
+            MovesLoop:
 
             int legalMoves = 0;
             int playedMoves = 0;
@@ -445,7 +458,7 @@ namespace Peeper.Logic.Search
 
                 score = -QSearch<NodeType>(pos, ss + 1, -beta, -alpha);
 
-            SkipSearch:
+                SkipSearch:
 
                 pos.UnmakeMove(m);
 
