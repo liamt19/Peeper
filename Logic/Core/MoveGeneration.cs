@@ -53,7 +53,7 @@ namespace Peeper.Logic.Core
             while (ourPieces != 0)
             {
                 int sq = PopLSB(&ourPieces);
-                var moves = bb.GetPieceAttacks(stm, type, sq, occ) & targets;
+                var moves = Bitboard.GetPieceAttacks(stm, type, sq, occ) & targets;
                 var promos = moves & promoSquares;
                 if (promoSquares.HasBit(sq))
                 {
@@ -83,7 +83,7 @@ namespace Peeper.Logic.Core
             int stm = ToMove;
             var occ = bb.Occupancy;
 
-            ref Hand ourHand = ref State->Hands[stm];
+            var ourHand = State->Hands[stm];
             foreach (var type in Piece.DroppableTypes)
             {
                 int n = ourHand.NumHeld(type);

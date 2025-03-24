@@ -191,14 +191,12 @@ namespace Peeper.Logic.Core
             State->Hash.ZobristChangeToMove();
             ToMove = Not(ToMove);
 
-            State->Checkers = bb.AttackersTo(State->KingSquares[theirColor], bb.Occupancy) & bb.Colors[ourColor];
-            
+            UpdateState();
+
             if (State->Checkers != 0)
                 State->ConsecutiveChecks[Not(ToMove)]++;
             else
                 State->ConsecutiveChecks[Not(ToMove)] = 0;
-
-            UpdateState();
         }
 
         public void UnmakeMove(Move move)

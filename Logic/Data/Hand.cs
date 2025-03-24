@@ -1,4 +1,5 @@
 ﻿
+using System.Runtime.CompilerServices;
 using System.Text;
 
 namespace Peeper.Logic.Data
@@ -41,6 +42,7 @@ namespace Peeper.Logic.Data
         public void Clear() => Data = 0;
         public bool IsEmpty => (Data == 0);
 
+        [MethodImpl(Inline)]
         public int NumHeld(int type)
         {
             var mask = MaskFor(type);
@@ -48,6 +50,7 @@ namespace Peeper.Logic.Data
             return (Data & mask) >> shift; 
         }
 
+        [MethodImpl(Inline)]
         public void SetNumHeld(int type, int n)
         {
             var mask = MaskFor(type);
@@ -55,6 +58,7 @@ namespace Peeper.Logic.Data
             Data = (Data & ~mask) | (n << shift);
         }
 
+        [MethodImpl(Inline)]
         public int AddToHand(int type)
         {
             var n = NumHeld(type);
@@ -62,6 +66,7 @@ namespace Peeper.Logic.Data
             return n + 1;
         }
 
+        [MethodImpl(Inline)]
         public int TakeFromHand(int type)
         {
             var n = NumHeld(type);
@@ -101,34 +106,39 @@ namespace Peeper.Logic.Data
             return NumHeld(Pawn) + NumHeld(Lance) + NumHeld(Knight) + NumHeld(Silver) + NumHeld(Gold) + NumHeld(Bishop) + NumHeld(Rook);
         }
 
+
+        private static ReadOnlySpan<int> _ShiftFor => [PawnShift, 0, LanceShift, KnightShift, 0, 0, SilverShift, 0, GoldShift, BishopShift, RookShift, 0, 0, 0];
         private static int ShiftFor(int type)
         {
-            return type switch
-            {
-                Pawn    => PawnShift,
-                Lance   => LanceShift,
-                Knight  => KnightShift,
-                Silver  => SilverShift,
-                Gold    => GoldShift,
-                Bishop  => BishopShift,
-                Rook    => RookShift,
-                _       => 0
-            };
+            return _ShiftFor[type];
+            //return type switch
+            //{
+            //    Pawn    => PawnShift,
+            //    Lance   => LanceShift,
+            //    Knight  => KnightShift,
+            //    Silver  => SilverShift,
+            //    Gold    => GoldShift,
+            //    Bishop  => BishopShift,
+            //    Rook    => RookShift,
+            //    _       => 0
+            //};
         }
 
+        private static ReadOnlySpan<int> _MaskFor => [PawnMask, 0, LanceMask, KnightMask, 0, 0, SilverMask, 0, GoldMask, BishopMask, RookMask, 0, 0, 0];
         private static int MaskFor(int type)
         {
-            return type switch
-            {
-                Pawn    => PawnMask,
-                Lance   => LanceMask,
-                Knight  => KnightMask,
-                Silver  => SilverMask,
-                Gold    => GoldMask,
-                Bishop  => BishopMask,
-                Rook    => RookMask,
-                _       => 0
-            };
+            return _MaskFor[type];
+            //return type switch
+            //{
+            //    Pawn    => PawnMask,
+            //    Lance   => LanceMask,
+            //    Knight  => KnightMask,
+            //    Silver  => SilverMask,
+            //    Gold    => GoldMask,
+            //    Bishop  => BishopMask,
+            //    Rook    => RookMask,
+            //    _       => 0
+            //};
         }
 
         public string ToString(int color)
