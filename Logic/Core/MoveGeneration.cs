@@ -11,71 +11,211 @@ namespace Peeper.Logic.Core
         {
             int stm = ToMove;
             var up = ShiftUpDir(stm);
+            var promoSquares = (stm == Black ? BlackPromotionSquares : WhitePromotionSquares);
+            var forcePromoMask = (stm == Black ? RankA_Mask : RankI_Mask);
 
             var us = bb.Colors[stm];
-
-            Bitmask ourPawns = bb.Pieces[Pawn] & us;
+            var ourPieces = bb.Pieces[Pawn] & us;
             var targets = targetSquares ?? ~us;
 
-            var promoSquares = (stm == Black ? BlackPromotionSquares : WhitePromotionSquares);
-            Bitmask forcePromoMask = ForcedPromotionSquares(stm, Pawn);
+            var moves = ourPieces.Shift(up) & targets;
+            var promos = moves & promoSquares;
 
-            var normalPushes = ourPawns.Shift(up) & targets;
-            var promotions = normalPushes & promoSquares;
-
-            normalPushes &= ~forcePromoMask;
-            while (normalPushes != 0)
+            moves &= ~forcePromoMask;
+            while (moves != 0)
             {
-                int to = PopLSB(&normalPushes);
+                int to = PopLSB(&moves);
                 list.AddMove(new(to - up, to));
             }
 
-            while (promotions != 0)
+            while (promos != 0)
             {
-                int to = PopLSB(&promotions);
+                int to = PopLSB(&promos);
                 list.AddMove(Move.MakePromo(to - up, to));
             }
         }
 
-        public void AddNormalMoves(ref MoveList list, int type, Bitmask? targetSquares = null)
+        public void AddLanceMoves(ref MoveList list, Bitmask? targetSquares = null)
         {
             int stm = ToMove;
-
             var promoSquares = (stm == Black ? BlackPromotionSquares : WhitePromotionSquares);
-            var forcePromoMask = ForcedPromotionSquares(stm, type);
-            bool doPromos = Piece.CanPromote(type);
+            var forcePromoMask = (stm == Black ? RankA_Mask : RankI_Mask);
 
-            var occ = bb.Occupancy;
-            var us = bb.Colors[stm];
-            var ourPieces = bb.Pieces[type] & us;
+            Bitmask occ = bb.Occupancy, us = bb.Colors[stm];
+            var ourPieces = bb.Pieces[Lance] & us;
             var targets = targetSquares ?? ~us;
 
             while (ourPieces != 0)
             {
                 int sq = PopLSB(&ourPieces);
-                var moves = Bitboard.GetPieceAttacks(stm, type, sq, occ) & targets;
+
+                var moves = GetLanceMoves(stm, sq, occ) & targets;
                 var promos = moves & promoSquares;
+                
+                //  Every move can be a promotion if the move begins within the promo zone
                 if (promoSquares.HasBit(sq))
-                {
                     promos = moves;
-                }
 
                 moves &= ~forcePromoMask;
                 while (moves != 0)
-                {
-                    int to = PopLSB(&moves);
-                    list.AddMove(new(sq, to));
-                }
-
-                if (!doPromos)
-                    continue;
+                    list.AddMove(new(sq, PopLSB(&moves)));
 
                 while (promos != 0)
-                {
-                    int to = PopLSB(&promos);
-                    list.AddMove(Move.MakePromo(sq, to));
-                }
+                    list.AddMove(Move.MakePromo(sq, PopLSB(&promos)));
             }
+        }
+
+        public void AddKnightMoves(ref MoveList list, Bitmask? targetSquares = null)
+        {
+            int stm = ToMove;
+            var promoSquares = (stm == Black ? BlackPromotionSquares : WhitePromotionSquares);
+            var forcePromoMask = (stm == Black ? RankAB_Mask : RankHI_Mask);
+
+            Bitmask us = bb.Colors[stm];
+            var ourPieces = bb.Pieces[Knight] & us;
+            var targets = targetSquares ?? ~us;
+
+            while (ourPieces != 0)
+            {
+                int sq = PopLSB(&ourPieces);
+
+                var moves = KnightMoveMask(stm, sq) & targets;
+                var promos = moves & promoSquares;
+
+                moves &= ~forcePromoMask;
+                while (moves != 0)
+                    list.AddMove(new(sq, PopLSB(&moves)));
+
+                while (promos != 0)
+                    list.AddMove(Move.MakePromo(sq, PopLSB(&promos)));
+            }
+        }
+
+        public void AddSilverMoves(ref MoveList list, Bitmask? targetSquares = null)
+        {
+            int stm = ToMove;
+            var promoSquares = (stm == Black ? BlackPromotionSquares : WhitePromotionSquares);
+
+            Bitmask us = bb.Colors[stm];
+            var ourPieces = bb.Pieces[Silver] & us;
+            var targets = targetSquares ?? ~us;
+
+            while (ourPieces != 0)
+            {
+                int sq = PopLSB(&ourPieces);
+
+                var moves = SilverMoveMask(stm, sq) & targets;
+                var promos = moves & promoSquares;
+
+                if (promoSquares.HasBit(sq))
+                    promos = moves;
+
+                while (moves != 0)
+                    list.AddMove(new(sq, PopLSB(&moves)));
+
+                while (promos != 0)
+                    list.AddMove(Move.MakePromo(sq, PopLSB(&promos)));
+            }
+        }
+
+        public void AddGoldMoves(ref MoveList list, Bitmask? targetSquares = null)
+        {
+            int stm = ToMove;
+
+            Bitmask us = bb.Colors[stm];
+            var ourPieces = bb.Golds() & us;
+            var targets = targetSquares ?? ~us;
+
+            while (ourPieces != 0)
+            {
+                int sq = PopLSB(&ourPieces);
+                var moves = GoldMoveMask(stm, sq) & targets;
+                while (moves != 0)
+                    list.AddMove(new(sq, PopLSB(&moves)));
+            }
+        }
+
+        public void AddBishopMoves(ref MoveList list, Bitmask? targetSquares = null)
+        {
+            int stm = ToMove;
+            var promoSquares = (stm == Black ? BlackPromotionSquares : WhitePromotionSquares);
+
+            Bitmask occ = bb.Occupancy, us = bb.Colors[stm];
+            var targets = targetSquares ?? ~us;
+
+            var ourPieces = bb.Pieces[Bishop] & us;
+            while (ourPieces != 0)
+            {
+                int sq = PopLSB(&ourPieces);
+                var moves = GetBishopMoves(sq, occ) & targets;
+                var promos = moves & promoSquares;
+
+                if (promoSquares.HasBit(sq))
+                    promos = moves;
+
+                while (moves != 0)
+                    list.AddMove(new(sq, PopLSB(&moves)));
+
+                while (promos != 0)
+                    list.AddMove(Move.MakePromo(sq, PopLSB(&promos)));
+            }
+
+            ourPieces = bb.Pieces[BishopPromoted] & us;
+            while (ourPieces != 0)
+            {
+                int sq = PopLSB(&ourPieces);
+                var moves = GetPromotedBishopMoves(sq, occ) & targets;
+
+                while (moves != 0)
+                    list.AddMove(new(sq, PopLSB(&moves)));
+            }
+        }
+
+        public void AddRookMoves(ref MoveList list, Bitmask? targetSquares = null)
+        {
+            int stm = ToMove;
+            var promoSquares = (stm == Black ? BlackPromotionSquares : WhitePromotionSquares);
+
+            Bitmask occ = bb.Occupancy, us = bb.Colors[stm];
+            var targets = targetSquares ?? ~us;
+
+            var ourPieces = bb.Pieces[Rook] & us;
+            while (ourPieces != 0)
+            {
+                int sq = PopLSB(&ourPieces);
+                var moves = GetRookMoves(sq, occ) & targets;
+                var promos = moves & promoSquares;
+
+                if (promoSquares.HasBit(sq))
+                    promos = moves;
+
+                while (moves != 0)
+                    list.AddMove(new(sq, PopLSB(&moves)));
+
+                while (promos != 0)
+                    list.AddMove(Move.MakePromo(sq, PopLSB(&promos)));
+            }
+
+            ourPieces = bb.Pieces[RookPromoted] & us;
+            while (ourPieces != 0)
+            {
+                int sq = PopLSB(&ourPieces);
+                var moves = GetPromotedRookMoves(sq, occ) & targets;
+
+                while (moves != 0)
+                    list.AddMove(new(sq, PopLSB(&moves)));
+            }
+        }
+
+        public void AddKingMoves(ref MoveList list, Bitmask? targetSquares = null)
+        {
+            Bitmask us = bb.Colors[ToMove];
+            int sq = State->KingSquares[ToMove];
+
+            var targets = targetSquares ?? ~us;
+            var moves = KingMoveMask(sq) & targets;
+            while (moves != 0)
+                list.AddMove(new(sq, PopLSB(&moves)));
         }
 
         public void AddDropMoves(ref MoveList list)
@@ -86,8 +226,7 @@ namespace Peeper.Logic.Core
             var ourHand = State->Hands[stm];
             foreach (var type in Piece.DroppableTypes)
             {
-                int n = ourHand.NumHeld(type);
-                if (n == 0)
+                if (ourHand.NumHeld(type) == 0)
                     continue;
 
                 var dropMask = AllMask & ~(occ | ForcedPromotionSquares(stm, type));
@@ -103,24 +242,30 @@ namespace Peeper.Logic.Core
         public void AddAllMoves(ref MoveList list)
         {
             AddPawnMoves(ref list);
-
-            for (int type = Pawn + 1; type < PieceNB; type++)
-            {
-                AddNormalMoves(ref list, type);
-            }
+            AddLanceMoves(ref list);
+            AddKnightMoves(ref list);
+            AddSilverMoves(ref list);
+            AddGoldMoves(ref list);
+            AddBishopMoves(ref list);
+            AddRookMoves(ref list);
+            AddKingMoves(ref list);
 
             AddDropMoves(ref list);
         }
+
 
         public void AddCaptures(ref MoveList list)
         {
             Bitmask targets = bb.Colors[Not(ToMove)];
 
             AddPawnMoves(ref list, targets);
-            for (int type = Pawn + 1; type < PieceNB; type++)
-            {
-                AddNormalMoves(ref list, type, targets);
-            }
+            AddLanceMoves(ref list, targets);
+            AddKnightMoves(ref list, targets);
+            AddSilverMoves(ref list, targets);
+            AddGoldMoves(ref list, targets);
+            AddBishopMoves(ref list, targets);
+            AddRookMoves(ref list, targets);
+            AddKingMoves(ref list, targets);
         }
 
 

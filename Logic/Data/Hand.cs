@@ -43,7 +43,7 @@ namespace Peeper.Logic.Data
         public bool IsEmpty => (Data == 0);
 
         [MethodImpl(Inline)]
-        public int NumHeld(int type)
+        public readonly int NumHeld(int type)
         {
             var mask = MaskFor(type);
             var shift = ShiftFor(type);
@@ -111,34 +111,12 @@ namespace Peeper.Logic.Data
         private static int ShiftFor(int type)
         {
             return _ShiftFor[type];
-            //return type switch
-            //{
-            //    Pawn    => PawnShift,
-            //    Lance   => LanceShift,
-            //    Knight  => KnightShift,
-            //    Silver  => SilverShift,
-            //    Gold    => GoldShift,
-            //    Bishop  => BishopShift,
-            //    Rook    => RookShift,
-            //    _       => 0
-            //};
         }
 
         private static ReadOnlySpan<int> _MaskFor => [PawnMask, 0, LanceMask, KnightMask, 0, 0, SilverMask, 0, GoldMask, BishopMask, RookMask, 0, 0, 0];
         private static int MaskFor(int type)
         {
             return _MaskFor[type];
-            //return type switch
-            //{
-            //    Pawn    => PawnMask,
-            //    Lance   => LanceMask,
-            //    Knight  => KnightMask,
-            //    Silver  => SilverMask,
-            //    Gold    => GoldMask,
-            //    Bishop  => BishopMask,
-            //    Rook    => RookMask,
-            //    _       => 0
-            //};
         }
 
         public string ToString(int color)

@@ -20,6 +20,7 @@ namespace Peeper.Logic.Data
         [UnscopedRef]
         public ref ScoredMove Last() => ref Buffer[Size - 1];
 
+        [MethodImpl(Inline)]
         public void AddMove(Move m)
         {
             Buffer[Size++].Move = m;

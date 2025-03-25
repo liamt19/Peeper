@@ -38,18 +38,22 @@ namespace Peeper.Logic.Magic
             WhiteLanceMagics = InitializeLanceMagics(White, WhiteLanceTable);
         }
 
-
+        [MethodImpl(Inline)]
         public static Bitmask GetRookMoves(int sq, Bitmask occ)
         {
             ref MagicSquare m = ref RookMagics[sq];
             return m.attacks[Pext(occ, m.mask)];
         }
 
+        [MethodImpl(InlineMaybe)]
         public static Bitmask GetBishopMoves(int sq, Bitmask occ)
         {
             ref MagicSquare m = ref BishopMagics[sq];
             return m.attacks[Pext(occ, m.mask)];
         }
+
+        public static Bitmask GetPromotedRookMoves(int sq, Bitmask occ) => GetRookMoves(sq, occ) | KingMoveMask(sq);
+        public static Bitmask GetPromotedBishopMoves(int sq, Bitmask occ) => GetBishopMoves(sq, occ) | KingMoveMask(sq);
 
         private static MagicSquare* InitializeMagics(int type, Bitmask* table)
         {
@@ -145,7 +149,7 @@ namespace Peeper.Logic.Magic
             }
         }
 
-
+        [MethodImpl(InlineMaybe)]
         public static Bitmask GetLanceMoves(int color, int sq, Bitmask occ)
         {
             ref MagicSquare m = ref (color == Black ? ref BlackLanceMagics[sq] : ref WhiteLanceMagics[sq]);

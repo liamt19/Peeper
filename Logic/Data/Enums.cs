@@ -1,5 +1,7 @@
-﻿using System.Reflection;
+﻿using System.Numerics;
+using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Runtime.Intrinsics.X86;
 
 namespace Peeper.Logic.Data
 {
@@ -39,14 +41,15 @@ namespace Peeper.Logic.Data
 
         public static bool IsPromoted(int type)
         {
-            return type == PawnPromoted || type == LancePromoted || type == KnightPromoted ||
-                   type == SilverPromoted || type == BishopPromoted || type == RookPromoted;
+            const int bits = 0b001100010110010;
+            return ((bits >> type) & 1) != 0;
         }
 
         public static bool CanPromote(int type)
         {
             Assert(type != None);
-            return type == Pawn || type == Lance || type == Knight || type == Silver || type == Bishop || type == Rook;
+            const int bits = 0b000011001001101;
+            return ((bits >> type) & 1) != 0;
         }
 
 
