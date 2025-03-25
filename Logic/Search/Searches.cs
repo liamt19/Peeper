@@ -215,6 +215,8 @@ namespace Peeper.Logic.Search
 
                 if (depth >= 2 && legalMoves >= 6)
                 {
+                    R += (!isPV).AsInt();
+
                     //  At least reduce by 1, but never enough to drop into qsearch
                     int reducedDepth = Math.Min(Math.Max(1, newDepth - R), newDepth - 1);
 
@@ -237,15 +239,12 @@ namespace Peeper.Logic.Search
                 }
 
 
-            SkipSearch:
+                SkipSearch:
 
                 pos.UnmakeMove(m);
 
                 if (isRoot)
-                {
-                    //  Update the NodeTM table with the number of nodes that were searched in this subtree.
                     thisThread.NodeTable[moveFrom][moveTo] += thisThread.Nodes - prevNodes;
-                }
 
                 if (thisThread.ShouldStop())
                     return ScoreDraw;
