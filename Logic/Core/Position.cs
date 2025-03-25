@@ -1,8 +1,6 @@
 ﻿
 #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
 
-#define BULK
-
 using Peeper.Logic.Data;
 using Peeper.Logic.Evaluation;
 using Peeper.Logic.Threads;
@@ -191,14 +189,12 @@ namespace Peeper.Logic.Core
             State->Hash.ZobristChangeToMove();
             ToMove = Not(ToMove);
 
-            State->Checkers = bb.AttackersTo(State->KingSquares[theirColor], bb.Occupancy) & bb.Colors[ourColor];
-            
+            UpdateState();
+
             if (State->Checkers != 0)
                 State->ConsecutiveChecks[Not(ToMove)]++;
             else
                 State->ConsecutiveChecks[Not(ToMove)] = 0;
-
-            UpdateState();
         }
 
         public void UnmakeMove(Move move)
@@ -467,33 +463,34 @@ namespace Peeper.Logic.Core
         }
 
 
+        [SkipLocalsInit]
         public ulong Perft(int depth)
         {
-#if !BULK
             if (depth == 0)
-            {
                 return 1;
-            }
-#endif
+
+            depth--;
 
             MoveList list = new();
-            int size = GenerateLegal(ref list);
-
-#if BULK
-            if (depth == 1)
-            {
-                return (ulong)size;
-            }
-#endif
+            int size = GeneratePseudoLegal(ref list);
 
             ulong n = 0;
             for (int i = 0; i < size; i++)
             {
                 Move m = list[i].Move;
-                MakeMove(m);
-                n += Perft(depth - 1);
-                UnmakeMove(m);
+                if (!IsLegal(m))
+                    continue;
+
+                if (depth == 0)
+                    n++;
+                else
+                {
+                    MakeMove(m);
+                    n += Perft(depth);
+                    UnmakeMove(m);
+                }
             }
+
             return n;
         }
 

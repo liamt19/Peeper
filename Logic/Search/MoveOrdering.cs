@@ -1,4 +1,5 @@
 ﻿
+using System.Runtime.CompilerServices;
 using static Peeper.Logic.Evaluation.MaterialCounting;
 
 namespace Peeper.Logic.Search

@@ -105,6 +105,7 @@ namespace Peeper.Logic.Transposition
             hash ^= Unsafe.Add(ref start, fromIndex) ^ Unsafe.Add(ref start, toIndex);
         }
 
+        [MethodImpl(Inline)]
         public static void ZobristToggleSquare(this ref ulong hash, int color, int type, int sq)
         {
             Assert(color is White or Black, $"ZobristToggleSquare({color}, {type}, {sq}) wasn't given a valid piece color!");
@@ -116,6 +117,7 @@ namespace Peeper.Logic.Transposition
             hash ^= Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(PSQHashes), index);
         }
 
+        [MethodImpl(Inline)]
         public static void ZobristUpdateHand(this ref ulong hash, int color, int type, int held, int newHeld)
         {
             hash ^= Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(HandHashes), HandIndex(color, type, held));

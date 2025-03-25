@@ -12,6 +12,9 @@ namespace Peeper.Logic.Util
     {
         public const MethodImplOptions Inline = MethodImplOptions.AggressiveInlining;
 
+        /// <summary> These inlinings might be dubious </summary>
+        public const MethodImplOptions InlineMaybe = MethodImplOptions.AggressiveInlining;
+
         public const string EngineBuildVersion = "0.0.1";
         public const int MoveListSize = 600;
 
@@ -45,6 +48,9 @@ namespace Peeper.Logic.Util
         public static readonly Bitmask BlackPromotionSquares = new(0x1FFFF, 0xFFC0000000000000);
         public static readonly Bitmask WhitePromotionSquares = new(0, 0x7FFFFFF);
 
+        public static readonly Bitmask RankAB_Mask = RankA_Mask | RankB_Mask;
+        public static readonly Bitmask RankHI_Mask = RankH_Mask | RankI_Mask;
+
         public const string InitialFEN_UCI = @"lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL[-] w - 1";
         public const string InitialFEN = @"lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1";
         public const string DropsFEN = @"4k4/9/9/9/9/9/9/9/4K4 b RBGSNLP 1";
@@ -73,22 +79,24 @@ namespace Peeper.Logic.Util
         public static Bitmask GetFileBB(int file) => File9_Mask << GetIndexFile(file);
 
         public static Bitmask ForcedPromotionSquares(int color, int type)
-        {
-            return type switch
+        {   
+            if (type == Pawn || type == Lance)
             {
-                Pawn or Lance when color is Black => RankA_Mask,
-                Pawn or Lance when color is White => RankI_Mask,
-                Knight when color is Black => (RankA_Mask | RankB_Mask),
-                Knight when color is White => (RankH_Mask | RankI_Mask),
-                _ => 0
-            };
+                return RankA_Mask >> ((SquareNB - 9) * color);
+            }
+            else if (type == Knight)
+            {
+                return (RankA_Mask | RankB_Mask) >> ((SquareNB - 9 - 9) * color);
+            }
+
+            return 0;
         }
 
         public static (ulong, ulong) Unpack(this Bitmask b) => (b.Upper(), b.Lower());
         public static ulong Upper(this Bitmask b) => (ulong)(b >> 64);
         public static ulong Lower(this Bitmask b) => (ulong)b;
 
-
+        [MethodImpl(Inline)]
         public static Bitmask Shift(this Bitmask b, int dir)
         {
             return dir switch

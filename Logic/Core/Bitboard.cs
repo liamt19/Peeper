@@ -16,7 +16,7 @@ namespace Peeper.Logic.Core
 
         public fixed int Mailbox[SquareNB];
 
-        public Bitmask Occupancy => Colors[Black] | Colors[White];
+        public readonly Bitmask Occupancy => Colors[Black] | Colors[White];
 
         public void Clear()
         {
@@ -31,21 +31,21 @@ namespace Peeper.Logic.Core
         }
 
         [MethodImpl(Inline)]
-        public int GetColorAtIndex(int sq)
+        public readonly int GetColorAtIndex(int sq)
         {
             Assert(Mailbox[sq] != None, $"GetColorAtIndex({sq}) Called on an empty square!");
             return (Colors[Black] & SquareBB(sq)) != 0 ? Black : White;
         }
 
         [MethodImpl(Inline)]
-        public int GetPieceAtIndex(int sq)
+        public readonly int GetPieceAtIndex(int sq)
         {
             Assert(sq < SquareNB);
             return Mailbox[sq];
         }
 
         [MethodImpl(Inline)]
-        public int KingIndex(int pc)
+        public readonly int KingIndex(int pc)
         {
             Assert(Popcount(Colors[pc] & Pieces[Piece.King]) != 0, $"{ColorToString(pc)}'s king was removed!");
             return LSB(Colors[pc] & Pieces[Piece.King]);
@@ -76,7 +76,7 @@ namespace Peeper.Logic.Core
         }
 
 
-        public Bitmask BlockingPieces(int pc, Bitmask* pinners)
+        public readonly Bitmask BlockingPieces(int pc, Bitmask* pinners)
         {
             Bitmask blockers = 0UL;
             *pinners = 0;
@@ -118,7 +118,7 @@ namespace Peeper.Logic.Core
 
 
         [MethodImpl(Inline)]
-        public Bitmask GetPieceAttacks(int color, int type, int sq, Bitmask occ)
+        public static Bitmask GetPieceAttacks(int color, int type, int sq, Bitmask occ)
         {
             return type switch
             {
@@ -143,50 +143,46 @@ namespace Peeper.Logic.Core
             };
         }
 
-        public Bitmask AttackersTo(int sq, Bitmask occ)
+        public readonly Bitmask AttackersTo(int sq, Bitmask occ)
         {
             Bitmask v = 0;
 
-            v |= (Pieces[Pawn] & PawnMoveMask(Black, sq) & Colors[White]);
-            v |= (Pieces[Pawn] & PawnMoveMask(White, sq) & Colors[Black]);
+            var white = Colors[White];
+            var black = Colors[Black];
 
-            v |= (Pieces[Lance] & GetLanceMoves(Black, sq, occ) & Colors[White]);
-            v |= (Pieces[Lance] & GetLanceMoves(White, sq, occ) & Colors[Black]);
+            v |= (Pieces[Pawn] & ((PawnMoveMask(Black, sq) & white) | (PawnMoveMask(White, sq) & black)));
+            v |= (Pieces[Lance] & ((GetLanceMoves(Black, sq, occ) & white) | (GetLanceMoves(White, sq, occ) & black)));
+            v |= (Pieces[Knight] & ((KnightMoveMask(Black, sq) & white) | (KnightMoveMask(White, sq) & black)));
+            v |= (Pieces[Silver] & ((SilverMoveMask(Black, sq) & white) | (SilverMoveMask(White, sq) & black)));
 
-            v |= (Pieces[Knight] & KnightMoveMask(Black, sq) & Colors[White]);
-            v |= (Pieces[Knight] & KnightMoveMask(White, sq) & Colors[Black]);
+            v |= (Golds() & ((GoldMoveMask(Black, sq) & white) | (GoldMoveMask(White, sq) & black)));
 
-            v |= (Pieces[Silver] & SilverMoveMask(Black, sq) & Colors[White]);
-            v |= (Pieces[Silver] & SilverMoveMask(White, sq) & Colors[Black]);
+            v |= (GetBishopMoves(sq, occ) & Bishops());
+            v |= (GetRookMoves(sq, occ) & Rooks());
 
-            v |= ((Pieces[Bishop] | Pieces[BishopPromoted]) & GetBishopMoves(sq, occ));
-            v |= ((Pieces[Rook] | Pieces[RookPromoted]) & GetRookMoves(sq, occ));
-
-            v |= (GoldMoveMask(Black, sq) & (Pieces[PawnPromoted] | Pieces[LancePromoted] | Pieces[KnightPromoted] | Pieces[SilverPromoted] | Pieces[Gold]) & Colors[White]);
-            v |= (GoldMoveMask(White, sq) & (Pieces[PawnPromoted] | Pieces[LancePromoted] | Pieces[KnightPromoted] | Pieces[SilverPromoted] | Pieces[Gold]) & Colors[Black]);
-
-            v |= (KingMoveMask(sq) & (Pieces[BishopPromoted] | Pieces[RookPromoted]));
+            v |= (KingMoveMask(sq) & PieceMask(BishopPromoted, RookPromoted));
 
             return v;
         }
+
 
         public override string ToString()
         {
             return ActiveFormatter.DisplayBoard(this);
         }
 
-        [MethodImpl(Inline)] public Bitmask PieceMask(int a, int b, int c, int d, int e, int f, int g, int h, int i) => PieceMask(a, b, c, d, e, f, g, h) | Pieces[i];
-        [MethodImpl(Inline)] public Bitmask PieceMask(int a, int b, int c, int d, int e, int f, int g, int h) => PieceMask(a, b, c, d, e, f, g) | Pieces[h];
-        [MethodImpl(Inline)] public Bitmask PieceMask(int a, int b, int c, int d, int e, int f, int g) => PieceMask(a, b, c, d, e, f) | Pieces[g];
-        [MethodImpl(Inline)] public Bitmask PieceMask(int a, int b, int c, int d, int e, int f) => PieceMask(a, b, c, d, e) | Pieces[f];
-        [MethodImpl(Inline)] public Bitmask PieceMask(int a, int b, int c, int d, int e) => PieceMask(a, b, c, d) | Pieces[e];
-        [MethodImpl(Inline)] public Bitmask PieceMask(int a, int b, int c, int d) => PieceMask(a, b, c) | Pieces[d];
-        [MethodImpl(Inline)] public Bitmask PieceMask(int a, int b, int c) => PieceMask(a, b) | Pieces[c];
-        [MethodImpl(Inline)] public Bitmask PieceMask(int a, int b) => PieceMask(a) | Pieces[b];
-        [MethodImpl(Inline)] public Bitmask PieceMask(int a) => Pieces[a];
+        [MethodImpl(Inline)] public readonly Bitmask PieceMask(int a, int b, int c, int d, int e, int f, int g, int h, int i) => PieceMask(a, b, c, d, e, f, g, h) | Pieces[i];
+        [MethodImpl(Inline)] public readonly Bitmask PieceMask(int a, int b, int c, int d, int e, int f, int g, int h) => PieceMask(a, b, c, d, e, f, g) | Pieces[h];
+        [MethodImpl(Inline)] public readonly Bitmask PieceMask(int a, int b, int c, int d, int e, int f, int g) => PieceMask(a, b, c, d, e, f) | Pieces[g];
+        [MethodImpl(Inline)] public readonly Bitmask PieceMask(int a, int b, int c, int d, int e, int f) => PieceMask(a, b, c, d, e) | Pieces[f];
+        [MethodImpl(Inline)] public readonly Bitmask PieceMask(int a, int b, int c, int d, int e) => PieceMask(a, b, c, d) | Pieces[e];
+        [MethodImpl(Inline)] public readonly Bitmask PieceMask(int a, int b, int c, int d) => PieceMask(a, b, c) | Pieces[d];
+        [MethodImpl(Inline)] public readonly Bitmask PieceMask(int a, int b, int c) => PieceMask(a, b) | Pieces[c];
+        [MethodImpl(Inline)] public readonly Bitmask PieceMask(int a, int b) => PieceMask(a) | Pieces[b];
+        [MethodImpl(Inline)] public readonly Bitmask PieceMask(int a) => Pieces[a];
 
-        [MethodImpl(Inline)] public Bitmask Golds() => PieceMask(PawnPromoted, LancePromoted, KnightPromoted, SilverPromoted, Gold);
-        [MethodImpl(Inline)] public Bitmask Bishops() => PieceMask(Bishop, BishopPromoted);
-        [MethodImpl(Inline)] public Bitmask Rooks() => PieceMask(Rook, RookPromoted);
+        [MethodImpl(Inline)] public readonly Bitmask Golds() => PieceMask(PawnPromoted, LancePromoted, KnightPromoted, SilverPromoted, Gold);
+        [MethodImpl(Inline)] public readonly Bitmask Bishops() => PieceMask(Bishop, BishopPromoted);
+        [MethodImpl(Inline)] public readonly Bitmask Rooks() => PieceMask(Rook, RookPromoted);
     }
 }

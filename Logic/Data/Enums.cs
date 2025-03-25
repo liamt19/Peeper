@@ -1,4 +1,7 @@
-﻿using System.Reflection;
+﻿using System.Numerics;
+using System.Reflection;
+using System.Runtime.CompilerServices;
+using System.Runtime.Intrinsics.X86;
 
 namespace Peeper.Logic.Data
 {
@@ -38,78 +41,50 @@ namespace Peeper.Logic.Data
 
         public static bool IsPromoted(int type)
         {
-            return type is PawnPromoted or LancePromoted or KnightPromoted or SilverPromoted or BishopPromoted or RookPromoted;
+            const int bits = 0b001100010110010;
+            return ((bits >> type) & 1) != 0;
         }
 
         public static bool CanPromote(int type)
         {
             Assert(type != None);
-            return type is Pawn or Lance or Knight or Silver or Bishop or Rook;
+            const int bits = 0b000011001001101;
+            return ((bits >> type) & 1) != 0;
         }
 
+
+        private static ReadOnlySpan<int> _Promote => [PawnPromoted, None, LancePromoted, KnightPromoted, None, None, SilverPromoted, None, None, BishopPromoted, RookPromoted, None, None, None, None];
         public static int Promote(int type)
         {
             Assert(CanPromote(type));
-            return type switch
-            {
-                Pawn => PawnPromoted,
-                Lance => LancePromoted,
-                Knight => KnightPromoted,
-                Silver => SilverPromoted,
-                Bishop => BishopPromoted,
-                Rook => RookPromoted,
-                _ => None
-            };
+            return _Promote[type];
         }
 
+
+        private static ReadOnlySpan<int> _Demote => [None, Pawn, None, None, Lance, Knight, None, Silver, None, None, None, Bishop, Rook, None, None];
         public static int Demote(int type)
         {
             Assert(IsPromoted(type));
-            return type switch
-            {
-                PawnPromoted => Pawn,
-                LancePromoted => Lance,
-                KnightPromoted => Knight,
-                SilverPromoted => Silver,
-                BishopPromoted => Bishop,
-                RookPromoted => Rook,
-                _ => None
-            };
+            return _Demote[type];
         }
 
+        [MethodImpl(Inline)]
         public static int DemoteMaybe(int type)
         {
             return IsPromoted(type) ? Demote(type) : type;
         }
 
+
+        private static ReadOnlySpan<int> _FromDropIndex => [Pawn, Lance, Knight, Silver, Gold, Bishop, Rook];
         public static int FromDropIndex(int d)
         {
-            return d switch
-            {
-                0 => Pawn,
-                1 => Lance,
-                2 => Knight,
-                3 => Silver,
-                4 => Gold,
-                5 => Bishop,
-                6 => Rook,
-                _ => None,
-            };
+            return _FromDropIndex[d];
         }
 
+        private static ReadOnlySpan<int> _ToDropIndex => [0, None, 1, 2, None, None, 3, None, 4, 5, 6, None, None, None, None];
         public static int ToDropIndex(int type)
         {
-            return type switch
-            {
-                Pawn   => 0,
-                Lance  => 1,
-                Knight => 2,
-                Silver => 3,
-                Gold   => 4,
-                Bishop => 5,
-                Rook   => 6,
-                _      => None,
-            };
+            return _ToDropIndex[type];
         }
     }
 

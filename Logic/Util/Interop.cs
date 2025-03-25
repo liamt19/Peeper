@@ -1,32 +1,25 @@
 ﻿
 #pragma warning disable CS8500 // This takes the address of, gets the size of, or declares a pointer to a managed type
 
-using Peeper.Logic.Data;
-using System;
-using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics.X86;
-using System.Text;
 
 namespace Peeper.Logic.Util
 {
     public static unsafe class Interop
     {
-        public static bool MoreThanOne(Bitmask value)
-        {
-            return (value & (value - 1)) != 0;
-        }
 
-        public static int Popcount(Bitmask value)
-        {
-            return (int)Bitmask.PopCount(value);
-        }
+        [MethodImpl(Inline)]
+        public static bool MoreThanOne(Bitmask value) => (value & (value - 1)) != 0;
 
-        public static int LSB(Bitmask value)
-        {
-            return (int)Bitmask.TrailingZeroCount(value);
-        }
+        [MethodImpl(Inline)]
+        public static int Popcount(Bitmask value) => (int)Bitmask.PopCount(value);
 
+        [MethodImpl(Inline)]
+        public static int LSB(Bitmask value) => (int)Bitmask.TrailingZeroCount(value);
+
+        [MethodImpl(Inline)]
         public static int PopLSB(Bitmask* value)
         {
             int sq = LSB(*value);
