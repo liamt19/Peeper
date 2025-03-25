@@ -96,6 +96,11 @@ namespace Peeper.Logic.Util
         public static ulong Upper(this Bitmask b) => (ulong)(b >> 64);
         public static ulong Lower(this Bitmask b) => (ulong)b;
 
+
+        [MethodImpl(Inline)]
+        public static int AsInt(this bool b) => b ? 1 : 0;
+
+
         [MethodImpl(Inline)]
         public static Bitmask Shift(this Bitmask b, int dir)
         {
