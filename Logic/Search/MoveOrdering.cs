@@ -1,16 +1,17 @@
 ﻿
-using System.Runtime.CompilerServices;
+using Peeper.Logic.Search.History;
 using static Peeper.Logic.Evaluation.MaterialCounting;
 
 namespace Peeper.Logic.Search
 {
     public static unsafe class MoveOrdering
     {
-        public static void AssignScores(Position pos, ref MoveList list, Move ttMove)
+        public static void AssignScores(Position pos, SearchStack* ss, in ThreadHistory history, ref MoveList list, Move ttMove)
         {
             ref Bitboard bb = ref pos.bb;
-            int size = list.Size;
+            int stm = pos.ToMove;
 
+            int size = list.Size;
             for (int i = 0; i < size; i++)
             {
                 ref ScoredMove sm = ref list[i];
@@ -27,9 +28,12 @@ namespace Peeper.Logic.Search
                 }
                 else
                 {
-                    int type = bb.GetPieceAtIndex(moveFrom);
                     int captured = bb.GetPieceAtIndex(moveTo);
-                    if (captured != None)
+                    if (captured is None)
+                    {
+                        sm.Score += history.QuietHistory[stm, m];
+                    }
+                    else
                     {
                         sm.Score += GetHandValue(captured);
                     }

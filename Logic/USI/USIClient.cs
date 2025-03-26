@@ -279,6 +279,8 @@ namespace Peeper.Logic.USI
             Options[nameof(NMPBaseRed)].AutoMinMax();
             Options[nameof(NMPDepthDiv)].AutoMinMax();
 
+            Options[nameof(StatBonusMult)].SetMinMax(25, 200);
+
             foreach (var optName in Options.Keys)
             {
                 var opt = Options[optName];

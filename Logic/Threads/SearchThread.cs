@@ -54,7 +54,7 @@ namespace Peeper.Logic.Threads
         private readonly ConditionVariable _SearchCond;
         private readonly Barrier _InitBarrier = new Barrier(2);
 
-        public HistoryTable History;
+        public ThreadHistory History;
         public ulong[][] NodeTable;
 
         public Move CurrentMove => RootMoves[PVIndex].Move;
@@ -95,7 +95,7 @@ namespace Peeper.Logic.Threads
         {
             Quit = false;
 
-            History = new HistoryTable();
+            History = new ThreadHistory();
             RootMoves = new RootMoveList();
 
             NodeTable = new ulong[SquareNB][];
@@ -237,7 +237,7 @@ namespace Peeper.Logic.Threads
                 (ss + i)->Clear();
                 (ss + i)->Ply = (short)i;
                 (ss + i)->PV = AlignedAllocZeroed<Move>(MaxPly);
-                (ss + i)->ContinuationHistory = History.Continuations[0][0][0, 0, 0];
+                (ss + i)->ContinuationHistory = History.Continuations[0, 0, 0];
             }
 
             for (int sq = 0; sq < SquareNB; sq++)
