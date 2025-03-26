@@ -13,17 +13,9 @@ namespace Peeper.Logic.Search.History
         private const int DimX = PieceNB * 2;
         private const int DimY = SquareNB;
 
-        /// <summary>
-        /// 12 * 64 == 768 elements
-        /// </summary>
         public const int Length = DimX * DimY;
 
         public Butterfly() { }
-
-        public void Dispose()
-        {
-            NativeMemory.AlignedFree(_History);
-        }
 
         public StatEntry this[int color, int type, int sq]
         {
@@ -44,20 +36,9 @@ namespace Peeper.Logic.Search.History
             return ((type + (PieceNB * color)) * DimY) + sq;
         }
 
-        /// <summary>
-        /// Allocates memory for this instance's array.
-        /// </summary>
-        public void Alloc()
-        {
-            _History = AlignedAllocZeroed<StatEntry>(Length);
-        }
-
-        public void Clear()
-        {
-            NativeMemory.Clear(_History, (nuint)(sizeof(StatEntry) * Length));
-            Span<StatEntry> span = new Span<StatEntry>(_History, (int)Length);
-            span.Fill(FillValue);
-        }
+        public void Alloc() => _History = AlignedAllocZeroed<StatEntry>(Length);
+        public void Dispose() => NativeMemory.AlignedFree(_History);
+        public void Clear() => new Span<StatEntry>(_History, (int)Length).Fill(FillValue);
     }
 
 }

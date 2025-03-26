@@ -15,7 +15,7 @@ namespace Peeper.Logic.Search.History
 
         public ContinuationHistory()
         {
-            _History = (Butterfly*)AlignedAllocZeroed((nuint)(sizeof(ulong) * Length));
+            _History = AlignedAllocZeroed<Butterfly>(Length);
 
             for (nuint i = 0; i < Length; i++)
             {
@@ -29,9 +29,7 @@ namespace Peeper.Logic.Search.History
         public void Dispose()
         {
             for (nuint i = 0; i < Length; i++)
-            {
-                (_History + i)->Dispose();
-            }
+                _History[i].Dispose();
 
             NativeMemory.AlignedFree(_History);
         }
@@ -39,9 +37,7 @@ namespace Peeper.Logic.Search.History
         public void Clear()
         {
             for (nuint i = 0; i < Length; i++)
-            {
                 _History[i].Clear();
-            }
         }
     }
 }

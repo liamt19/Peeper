@@ -27,6 +27,7 @@ namespace Peeper.Logic.Data
 
         public readonly int To => (int)((Data >> 0) & 127);
         public readonly int From => (int)((Data >> 7) & 127);
+        public readonly int MoveMask => (To * 81 + From);
 
         public (int from, int to) Unpack() => (From, To);
 

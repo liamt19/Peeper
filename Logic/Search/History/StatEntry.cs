@@ -1,5 +1,5 @@
 ﻿
-using static Peeper.Logic.Search.History.HistoryTable;
+using static Peeper.Logic.Search.History.ThreadHistory;
 
 namespace Peeper.Logic.Search.History
 {

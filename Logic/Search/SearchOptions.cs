@@ -28,5 +28,7 @@ namespace Peeper.Logic.Search
 
         public static int RazoringMaxDepth = 4;
         public static int RazoringMult = 280;
+
+        public static int StatBonusMult = 100;
     }
 }
