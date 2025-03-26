@@ -21,22 +21,17 @@ namespace Peeper.Logic.Search
                 if (m.Equals(ttMove))
                 {
                     sm.Score = int.MaxValue - 1000000;
+                    continue;
                 }
-                else if (m.IsDrop)
+
+                int captured = bb.GetPieceAtIndex(moveTo);
+                if (captured == None)
                 {
-                    sm.Score += GetPieceValue(m.DroppedPiece);
+                    sm.Score = history.HistoryForMove(stm, m);
                 }
                 else
                 {
-                    int captured = bb.GetPieceAtIndex(moveTo);
-                    if (captured is None)
-                    {
-                        sm.Score += history.QuietHistory[stm, m];
-                    }
-                    else
-                    {
-                        sm.Score += GetHandValue(captured);
-                    }
+                    sm.Score = (captured * 12) - pos.MovedPiece(m);
                 }
             }
         }
