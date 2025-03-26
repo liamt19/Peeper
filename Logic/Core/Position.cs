@@ -89,6 +89,12 @@ namespace Peeper.Logic.Core
 
 
         [MethodImpl(Inline)]
+        public bool IsQuiet(Move m) => !IsNoisy(m);
+
+        [MethodImpl(Inline)]
+        public bool IsNoisy(Move m) => (m.IsPromotion || IsCapture(m));
+
+        [MethodImpl(Inline)]
         public bool IsCapture(Move m) => (bb.GetPieceAtIndex(m.To) != None);
 
         [MethodImpl(Inline)]

@@ -165,6 +165,9 @@ namespace Peeper.Logic.Search
             Span<Move> quietMoves = stackalloc Move[32];
             int quietCount = 0;
 
+            bool skipQuiets = false;
+            int lmpMoves = LMP(depth);
+
             MoveList list = new();
             int size = pos.GeneratePseudoLegal(ref list);
             MoveOrdering.AssignScores(pos, ss, history, ref list, ttMove);
@@ -187,6 +190,15 @@ namespace Peeper.Logic.Search
                 bool isQuiet = theirPiece == None;
 
                 int R = LMR(depth, legalMoves);
+                bool isNoisy = pos.IsNoisy(m);
+
+                if (!isRoot && !IsLoss(bestScore))
+                {
+                    skipQuiets = legalMoves >= lmpMoves;
+
+                    if (!isNoisy && skipQuiets && depth <= 6)
+                        continue;
+                }
 
                 ss->CurrentMove = m;
                 ss->ContinuationHistory = history.Continuations[0];
