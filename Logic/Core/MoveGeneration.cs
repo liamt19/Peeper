@@ -284,6 +284,8 @@ namespace Peeper.Logic.Core
             AddRookMoves(ref list, targets);
             AddKingMoves(ref list, targets);
 
+            AddDropMoves(ref list);
+
             return list.Size - prevSize;
         }
 
