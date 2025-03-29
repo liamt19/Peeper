@@ -253,10 +253,10 @@ namespace Peeper.Logic.Core
             AddDropMoves(ref list);
         }
 
-
-        public void AddCaptures(ref MoveList list)
+        public int AddCaptures(ref MoveList list)
         {
             Bitmask targets = bb.Colors[Not(ToMove)];
+            int prevSize = list.Size;
 
             AddPawnMoves(ref list, targets);
             AddLanceMoves(ref list, targets);
@@ -266,6 +266,25 @@ namespace Peeper.Logic.Core
             AddBishopMoves(ref list, targets);
             AddRookMoves(ref list, targets);
             AddKingMoves(ref list, targets);
+
+            return list.Size - prevSize;
+        }
+
+        public int AddQuiets(ref MoveList list)
+        {
+            Bitmask targets = AllMask ^ bb.Occupancy;
+            int prevSize = list.Size;
+
+            AddPawnMoves(ref list, targets);
+            AddLanceMoves(ref list, targets);
+            AddKnightMoves(ref list, targets);
+            AddSilverMoves(ref list, targets);
+            AddGoldMoves(ref list, targets);
+            AddBishopMoves(ref list, targets);
+            AddRookMoves(ref list, targets);
+            AddKingMoves(ref list, targets);
+
+            return list.Size - prevSize;
         }
 
 

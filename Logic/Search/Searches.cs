@@ -1,13 +1,13 @@
 ﻿
-using Peeper.Logic.Data;
+#define MP_NM
+#define MP_QS
+
 using Peeper.Logic.Evaluation;
 using Peeper.Logic.Search.History;
+using Peeper.Logic.Search.Ordering;
 using Peeper.Logic.Threads;
 using Peeper.Logic.Transposition;
 using System.Text;
-using System.Text.RegularExpressions;
-using System.Threading;
-using System.Xml.Linq;
 
 using static Peeper.Logic.Evaluation.MaterialCounting;
 using static Peeper.Logic.Transposition.TTEntry;
@@ -165,6 +165,12 @@ namespace Peeper.Logic.Search
             Span<Move> quietMoves = stackalloc Move[32];
             int quietCount = 0;
 
+#if MP_NM
+            MovePicker mp = MovePicker.Negamax(pos, ttMove);
+            Move m;
+            while (m = mp.Next())
+            {
+#else
             MoveList list = new();
             int size = pos.GeneratePseudoLegal(ref list);
             MoveOrdering.AssignScores(pos, ss, history, ref list, ttMove);
@@ -172,6 +178,7 @@ namespace Peeper.Logic.Search
             for (int i = 0; i < size; i++)
             {
                 Move m = MoveOrdering.OrderNextMove(ref list, i);
+#endif
 
                 if (!pos.IsLegal(m))
                 {
@@ -184,7 +191,8 @@ namespace Peeper.Logic.Search
 
                 int ourPiece = pos.MovedPiece(m);
                 int theirPiece = bb.GetPieceAtIndex(moveTo);
-                bool isQuiet = theirPiece == None;
+                bool isCapture = theirPiece != None;
+                bool isQuiet = !isCapture;
 
                 int R = LMR(depth, legalMoves);
 
@@ -432,8 +440,14 @@ namespace Peeper.Logic.Search
 
             alpha = Math.Max(alpha, eval);
 
-        MovesLoop:
+            MovesLoop:
 
+#if MP_QS
+            MovePicker mp = MovePicker.QSearch(pos, ttMove);
+            Move m;
+            while (m = mp.Next())
+            {
+#else
             MoveList list = new();
             int size = pos.GenerateQSearch(ref list);
             MoveOrdering.AssignQSearchScores(pos, ref list, ttMove);
@@ -441,6 +455,7 @@ namespace Peeper.Logic.Search
             for (int i = 0; i < size; i++)
             {
                 Move m = MoveOrdering.OrderNextMove(ref list, i);
+#endif
 
                 if (!pos.IsLegal(m))
                 {
@@ -539,11 +554,6 @@ namespace Peeper.Logic.Search
                     history.HistoryForMove(us, m) <<= malus;
                 }
             }
-            else
-            {
-
-            }
-
         }
 
 
@@ -672,7 +682,7 @@ namespace Peeper.Logic.Search
 
         private static int RFPMargin(int depth) => depth * RFPMult;
 
-        private static int StatBonus(int depth) => depth * StatBonusMult;
+        private static int StatBonus(int depth) => Math.Min(depth * StatBonusMult - StatBonusSub, StatBonusMax);
 
         private static void AppendToPV(Move* pv, Move move, Move* childPV)
         {

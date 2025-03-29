@@ -19,6 +19,8 @@ namespace Peeper.Logic.Data
         private static readonly Bitmask* ForwardRays;
         private static readonly Bitmask* BackwardRays;
 
+        private static readonly Bitmask** DropMasks;
+
         private static readonly Bitmask** BetweenBB;
         private static readonly Bitmask** LineBB;
         private static readonly Bitmask** RayBB;
@@ -39,6 +41,8 @@ namespace Peeper.Logic.Data
 
         public static Bitmask BlackPawnMoves(int sq) => PawnMasks[Black * SquareNB + sq];
         public static Bitmask WhitePawnMoves(int sq) => PawnMasks[White * SquareNB + sq];
+
+        public static Bitmask DropMask(int color, int type) => DropMasks[color][type];
 
         public static Bitmask Between(int a, int b) => BetweenBB[a][b];
         public static Bitmask Line(int a, int b) => LineBB[a][b];
@@ -61,6 +65,8 @@ namespace Peeper.Logic.Data
             RookRays = AlignedAllocZeroed<Bitmask>(SquareNB);
             BishopRays = AlignedAllocZeroed<Bitmask>(SquareNB);
 
+            DropMasks = (Bitmask**)AlignedAllocZeroed((nuint)sizeof(Bitmask*) * ColorNB);
+
             BetweenBB = (Bitmask**)AlignedAllocZeroed((nuint)sizeof(Bitmask*) * SquareNB);
             LineBB = (Bitmask**)AlignedAllocZeroed((nuint)sizeof(Bitmask*) * SquareNB);
             RayBB = (Bitmask**)AlignedAllocZeroed((nuint)sizeof(Bitmask*) * SquareNB);
@@ -70,6 +76,7 @@ namespace Peeper.Logic.Data
             CreatePieceRays();
             CreatePieceMasks();
             CreateSpecialRays();
+            CreateDropMasks();
 
             CreateReductions();
         }
@@ -165,6 +172,20 @@ namespace Peeper.Logic.Data
                     }
 
                     LineBB[s1][s2] = BetweenBB[s1][s2] | SquareBB(s2);
+                }
+            }
+        }
+
+        private static void CreateDropMasks()
+        {
+            DropMasks[Black] = AlignedAllocZeroed<Bitmask>(PieceNB);
+            DropMasks[White] = AlignedAllocZeroed<Bitmask>(PieceNB);
+            for (int type = 0; type < PieceNB; type++)
+            {
+                if (Piece.CanBeDropped(type))
+                {
+                    DropMasks[Black][type] = ForcedPromotionSquares(Black, type);
+                    DropMasks[White][type] = ForcedPromotionSquares(White, type);
                 }
             }
         }

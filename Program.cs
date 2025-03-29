@@ -19,6 +19,7 @@ namespace Peeper
         {
             if (args.Length != 0 && args[0] == "bench")
             {
+                SearchBench.Warmup();
                 SearchBench.Go(openBench: true);
                 Environment.Exit(0);
             }
