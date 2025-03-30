@@ -156,7 +156,7 @@ namespace Peeper.Logic.Evaluation
 
             int SimdChunks = L1_SIZE / Vector256<short>.Count;
 
-            const int outputBucket = 0;
+            int outputBucket = (Popcount(pos.bb.Occupancy) - 2) / ((40 + OUTPUT_BUCKETS - 1) / OUTPUT_BUCKETS);
 
             var us = pos.ToMove;
 
