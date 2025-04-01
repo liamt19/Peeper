@@ -11,16 +11,22 @@ namespace Peeper.Logic.Evaluation
     public static unsafe class NNUEUtils
     {
 
-        public static Stream TryOpenFile(string networkToLoad, bool exitIfFail = true)
+        public static Stream TryOpenFile(string? networkToLoad = null, bool exitIfFail = true)
         {
+            if (networkToLoad is null)
+            {
+                try
+                {
+                    networkToLoad = Assembly.GetEntryAssembly()?.GetCustomAttribute<EvalFileAttribute>()?.EvalFile.Trim();
+                }
+                catch { networkToLoad = ""; }
+            }
+
             if (File.Exists(networkToLoad))
             {
                 Log($"Loading {networkToLoad} via filepath");
                 return File.OpenRead(networkToLoad);
             }
-
-            //  Try to load the default network
-            networkToLoad = NNUE.NetworkName;
 
             try
             {

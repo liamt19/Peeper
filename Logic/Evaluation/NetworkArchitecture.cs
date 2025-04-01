@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
-
+using System.Runtime.Intrinsics;
 using static Peeper.Logic.Evaluation.NNUE;
 
 namespace Peeper.Logic.Evaluation
