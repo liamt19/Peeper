@@ -51,6 +51,8 @@ namespace Peeper.Logic.Search
             short eval = ss->StaticEval;
             int startingAlpha = alpha;
 
+            bool improving = false;
+
             if (isPV)
                 thisThread.SelDepth = Math.Max(thisThread.SelDepth, ss->Ply + 1);
 
@@ -112,6 +114,13 @@ namespace Peeper.Logic.Search
 
             eval = ss->StaticEval = NNUE.GetEvaluation(pos);
 
+            if (ss->Ply >= 2)
+            {
+                improving = (ss - 2)->StaticEval != ScoreNone ? ss->StaticEval > (ss - 2)->StaticEval
+                          : (ss - 4)->StaticEval != ScoreNone ? ss->StaticEval > (ss - 4)->StaticEval
+                          :                                     true;
+            }
+
 
             if (UseRFP
                 && depth <= RFPDepth
@@ -120,7 +129,7 @@ namespace Peeper.Logic.Search
                 && !IsWin(eval)
                 && eval >= beta
 #endif
-                && eval - RFPMargin(depth) >= beta)
+                && eval - RFPMargin(depth, improving) >= beta)
             {
                 return eval;
             }
@@ -670,7 +679,7 @@ namespace Peeper.Logic.Search
         }
 
 
-        private static int RFPMargin(int depth) => depth * RFPMult;
+        private static int RFPMargin(int depth, bool improving) => (depth - (improving ? 1 : 0)) * RFPMult;
 
         private static int StatBonus(int depth) => depth * StatBonusMult;
 
