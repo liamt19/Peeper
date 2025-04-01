@@ -361,12 +361,11 @@ namespace Peeper.Logic.Core
                 }
 
                 int checker = LSB(State->Checkers);
-                if ((Line(ourKing, checker) & SquareBB(moveTo)) != 0)
+                if (Line(ourKing, checker).HasBit(moveTo))
                 {
                     //  This move is another piece which has moved into the LineBB between our king and the checking piece.
-                    //  This will be legal as long as it isn't pinned.
-
-                    return pinnedPieces == 0 || (pinnedPieces & SquareBB(moveFrom)) == 0;
+                    //  This will be legal if it's a drop, or if the piece being moved isn't pinned.
+                    return move.IsDrop || !pinnedPieces.HasBit(moveFrom);
                 }
 
                 //  This isn't a king move and doesn't get us out of check, so it's illegal.
@@ -379,7 +378,10 @@ namespace Peeper.Logic.Core
                 return ((bb.AttackersTo(moveTo, bb.Occupancy ^ SquareBB(ourKing)) & bb.Colors[theirColor]) | (KingMoveMask(moveTo) & SquareBB(theirKing))) == 0;
             }
         
-            return (!State->BlockingPieces[ourColor].HasBit(moveFrom) || Ray(moveFrom, moveTo).HasBit(ourKing));
+            //  Good if it's a drop anywhere,
+            //  or if the piece being moved isn't a blocker
+            //  or the piece is a blocker, but it's staying between the king and checker
+            return move.IsDrop || !State->BlockingPieces[ourColor].HasBit(moveFrom) || Ray(moveFrom, moveTo).HasBit(ourKing);
         }
 
 
@@ -663,6 +665,7 @@ namespace Peeper.Logic.Core
             sb.AppendLine(bb.ToString());
 
             sb.AppendLine($"\r\nFEN: {ActiveFormatter.FormatSFen(this)}");
+            sb.AppendLine($"FEN: {InactiveFormatter.FormatSFen(this)}");
             sb.AppendLine($"\r\nBlack hand: {State->Hands[Black].ToString(Black)}");
             sb.AppendLine($"White hand: {State->Hands[White].ToString(White)}");
             sb.AppendLine($"\r\n{ColorToString(ToMove)} to move");

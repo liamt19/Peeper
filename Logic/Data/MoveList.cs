@@ -51,10 +51,11 @@ namespace Peeper.Logic.Data
             StringBuilder sb = new StringBuilder();
 
             sb.AppendLine($"Total of {Size}");
+            var mArr = ToSpan().ToArray();
 
             for (int type = 0; type < PieceNB; type++)
             {
-                int n = ToSpan().ToArray().Count(x => !x.Move.IsDrop && bb.GetPieceAtIndex(x.Move.From) == type);
+                int n = mArr.Count(x => !x.Move.IsDrop && bb.GetPieceAtIndex(x.Move.From) == type);
                 if (n == 0)
                     continue;
 
@@ -74,18 +75,29 @@ namespace Peeper.Logic.Data
                 sb.AppendLine();
             }
 
-            int drops = ToSpan().ToArray().Count(x => x.Move.IsDrop);
+            int drops = mArr.Count(x => x.Move.IsDrop);
             if (drops != 0)
             {
                 sb.AppendLine($"Drops == {drops}");
 
-                for (int i = 0; i < Size; i++)
+                foreach (var type in DroppableTypes)
                 {
-                    Move m = Buffer[i].Move;
-                    if (!m.IsDrop)
+                    int n = mArr.Count(x => x.Move.IsDrop && x.Move.DroppedPiece == type);
+                    if (n == 0)
                         continue;
 
-                    sb.Append($"{m} ");
+                    sb.Append($"{PieceToString(type)}\t{n} -> ");
+
+                    for (int i = 0; i < Size; i++)
+                    {
+                        Move m = Buffer[i].Move;
+                        if (!m.IsDrop || m.DroppedPiece != type)
+                            continue;
+
+                        sb.Append($"{m} ");
+                    }
+
+                    sb.AppendLine();
                 }
             }
 
