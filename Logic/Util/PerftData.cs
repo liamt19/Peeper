@@ -8,6 +8,7 @@ namespace Peeper.Logic.Util
     {
         public static Dictionary<string, ulong[]> PerftPositions = new()
         {
+            {"k+n7/sg7/9/9/9/9/+r5K1g/7L1/2LN1R1+Bb b RBGSNLP 1", new ulong[] { 1, 45, 1148, 414441, 13033326, 4178714829 } },
             {"l6nl/5+P1gk/2np1S3/p1p4Pp/3P2Sp1/1PPb2P1P/P5GS1/R8/LN4bKL w GR5pnsg 1", new ulong[] { 1, 207, 28684, 4809015, 516925165 } },
             {"lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1", new ulong[] { 1, 30, 900, 25470, 719731, 19861490, 547581517, 15086269607 } },
             {"l7l/3s5/prnp2kp1/2p1Gppnp/1P7/PnPP1P3/3BP2PP/1S1G5/LN1K1G1+rL b SBG3ps 91", new ulong[] { 1, 180, 15217, 2067680, 129175973, 13896719538 } },

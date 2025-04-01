@@ -19,6 +19,7 @@ namespace Peeper
         {
             if (args.Length != 0 && args[0] == "bench")
             {
+                SearchBench.Warmup();
                 SearchBench.Go(openBench: true);
                 Environment.Exit(0);
             }
@@ -188,7 +189,7 @@ namespace Peeper
 
             ulong total = 0;
 
-            Position p = new Position(pos.GetSFen());
+            Position p = new Position(pos.GetSFen(), createAccumulators: false);
             Stopwatch sw = Stopwatch.StartNew();
 
             MoveList list = new();
@@ -211,24 +212,42 @@ namespace Peeper
         {
             if (input.ContainsIgnoreCase("perft"))
             {
+                MoveList mlist = new();
+                Position perftPos = new(createAccumulators: false);
+
                 foreach (var (sfen, depthData) in PerftData.PerftPositions)
                 {
-                    pos.LoadFromSFen(sfen);
+                    perftPos.LoadFromSFen(sfen);
+                    int size = perftPos.GenerateLegal(ref mlist);
+                    var list = mlist.ToSpicyPointer();
+
                     Log($"{sfen}");
 
-                    int maxD = Math.Min(depthData.Length, 5);
-                    for (int depth = 1; depth < maxD; depth++)
+                    for (int depth = 1; depth < depthData.Length; depth++)
                     {
-                        var correctNodes = depthData[depth];
-                        ulong ourNodes = pos.Perft(depth);
-                        if (ourNodes != depthData[depth])
+                        ulong n = 0;
+
+                        if (depth > 4)
                         {
-                            Log($"{depth}\t{ourNodes} should be {correctNodes}");
+                            int threads = Math.Min(Math.Max(1, size), Environment.ProcessorCount / 2);
+                            Parallel.For(0, size, new ParallelOptions { MaxDegreeOfParallelism = threads }, i =>
+                            {
+                                Position threadPosition = new(sfen, createAccumulators: false);
+                                threadPosition.MakeMove(list[i].Move);
+                                ulong thisN = threadPosition.Perft(depth - 1);
+
+                                n += thisN;
+                            });
                         }
                         else
                         {
-                            Log($"{depth}\t{ourNodes} correct");
+                            n = perftPos.Perft(depth);
                         }
+                        
+                        if (n != depthData[depth])
+                            Log($"{depth}\t{n} should be {depthData[depth]}");
+                        else
+                            Log($"{depth}\t{n} correct");
                     }
                 }
             }
