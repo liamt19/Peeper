@@ -100,6 +100,8 @@ namespace Peeper.Logic.Util
         [MethodImpl(Inline)]
         public static int AsInt(this bool b) => b ? 1 : 0;
 
+        public static int CeilToMultiple(int val, int mult) => (val + mult - 1) / mult * mult;
+
 
         [MethodImpl(Inline)]
         public static Bitmask Shift(this Bitmask b, int dir)

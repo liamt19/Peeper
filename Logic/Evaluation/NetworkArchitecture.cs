@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
-
+using System.Runtime.Intrinsics;
 using static Peeper.Logic.Evaluation.NNUE;
 
 namespace Peeper.Logic.Evaluation
@@ -11,8 +11,8 @@ namespace Peeper.Logic.Evaluation
     {
         public const int INPUT_BUCKETS = 1;
         public const int FT_SIZE = 2344;
-        public const int L1_SIZE = 64;
-        public const int OUTPUT_BUCKETS = 1;
+        public const int L1_SIZE = 128;
+        public const int OUTPUT_BUCKETS = 8;
 
         public const int FT_QUANT = 255;
         public const int L1_QUANT = 64;

@@ -21,59 +21,15 @@ namespace Peeper.Logic.Evaluation
 {
     public static unsafe class NNUE
     {
-        public static string NetworkName
-        {
-            get
-            {
-                try
-                {
-                    return Assembly.GetEntryAssembly()?.GetCustomAttribute<EvalFileAttribute>()?.EvalFile.Trim();
-                }
-                catch { return ""; }
-            }
-        }
-
         private static readonly NetworkT Net;
+
+        private static readonly int SIMD_CHUNKS = L1_SIZE / Vector256<short>.Count;
 
         static NNUE()
         {
             Net = new NetworkT();
-            Initialize(NetworkName);
+            Initialize();
         }
-
-        public static void Initialize(string networkToLoad, bool exitIfFail = true)
-        {
-            using Stream netStream = NNUEUtils.TryOpenFile(networkToLoad, exitIfFail);
-
-            BinaryReader br = new BinaryReader(netStream);
-
-            long toRead = ExpectedNetworkSize;
-            if (br.BaseStream.Position + toRead > br.BaseStream.Length)
-            {
-                Console.WriteLine("Bucketed768's BinaryReader doesn't have enough data for all weights and biases to be read!");
-                Console.WriteLine($"It expects to read {toRead} bytes, but the stream's position is {br.BaseStream.Position} / {br.BaseStream.Length}");
-                Console.WriteLine("The file being loaded is either not a valid 768 network, or has different layer sizes than the hardcoded ones.");
-                if (exitIfFail)
-                {
-                    Environment.Exit(-1);
-                }
-                else
-                {
-                    return;
-                }
-            }
-
-            for (int i = 0; i < N_FTW; i++) Net.FTWeights[i] = br.ReadInt16();
-            for (int i = 0; i < N_FTB; i++) Net.FTBiases[i]  = br.ReadInt16();
-
-            for (int i = 0; i < N_L1W; i++) Net.L1Weights[i] = br.ReadInt16();
-            for (int i = 0; i < N_L1B; i++) Net.L1Biases[i]  = br.ReadInt16();
-
-            br.Dispose();
-
-            //TransposeLayerWeights((short*)Net.L1Weights, L1_SIZE, OUTPUT_BUCKETS);
-        }
-
 
         public static void RefreshAccumulator(Position pos)
         {
@@ -145,6 +101,7 @@ namespace Peeper.Logic.Evaluation
             return (short)ev;
         }
 
+
         private static int Evaluate(Position pos)
         {
             ref Accumulator accumulator = ref *pos.State->Accumulator;
@@ -154,9 +111,8 @@ namespace Peeper.Logic.Evaluation
             Vector256<short> zeroVec = Vector256<short>.Zero;
             Vector256<int> sum = Vector256<int>.Zero;
 
-            int SimdChunks = L1_SIZE / Vector256<short>.Count;
-
-            const int outputBucket = 0;
+            const int bucketDivisor = (40 + OUTPUT_BUCKETS - 1) / OUTPUT_BUCKETS;
+            int outputBucket = (Popcount(pos.bb.Occupancy) - 2) / bucketDivisor;
 
             var us = pos.ToMove;
 
@@ -164,8 +120,8 @@ namespace Peeper.Logic.Evaluation
             var nstm = accumulator[Not(us)];
             var stmWeights  = (Vector256<short>*)(&Net.L1Weights[outputBucket * (L1_SIZE * 2)]);
             var nstmWeights = (Vector256<short>*)(&Net.L1Weights[outputBucket * (L1_SIZE * 2) + L1_SIZE]);
-
-            for (int i = 0; i < SimdChunks; i++)
+            
+            for (int i = 0; i < SIMD_CHUNKS; i++)
             {
                 Vector256<short> clamp = Vector256.Min(maxVec, Vector256.Max(zeroVec, stm[i]));
                 Vector256<short> mult = clamp * stmWeights[i];
@@ -176,7 +132,7 @@ namespace Peeper.Logic.Evaluation
                 sum = Vector256.Add(sum, Vector256.Add(mLo * cLo, mHi * cHi));
             }
 
-            for (int i = 0; i < SimdChunks; i++)
+            for (int i = 0; i < SIMD_CHUNKS; i++)
             {
                 Vector256<short> clamp = Vector256.Min(maxVec, Vector256.Max(zeroVec, nstm[i]));
                 Vector256<short> mult = clamp * nstmWeights[i];
@@ -250,7 +206,6 @@ namespace Peeper.Logic.Evaluation
             }
         }
 
-
         [MethodImpl(Inline)]
         public static void MakeNullMove(Position pos)
         {
@@ -264,6 +219,7 @@ namespace Peeper.Logic.Evaluation
             nextAcc->Update[Black].Clear();
             nextAcc->Update[White].Clear();
         }
+
 
         [MethodImpl(Inline)]
         public static void ProcessUpdates(Position pos)
@@ -343,25 +299,29 @@ namespace Peeper.Logic.Evaluation
         }
 
 
-
-
-        public static void AddFeature(short* src, short* dst, int offset)
+        private static void Initialize(string? networkToLoad = null, bool exitIfFail = true)
         {
-            var weights = &Net.FTWeights[offset];
-            for (int i = 0; i < L1_SIZE; i++)
+            using Stream netStream = NNUEUtils.TryOpenFile(networkToLoad, exitIfFail);
+
+            BinaryReader br = new(netStream);
+
+            long toRead = ExpectedNetworkSize;
+            if (br.BaseStream.Position + toRead > br.BaseStream.Length)
             {
-                dst[i] = (short)(src[i] + weights[i]);
+                Console.WriteLine("BinaryReader doesn't have enough data for all weights and biases to be read!");
+                Console.WriteLine($"It expects to read {toRead} bytes, but the stream's position is {br.BaseStream.Position} / {br.BaseStream.Length}");
+                Console.WriteLine("The file being loaded is either not a valid network or has different layer sizes than the hardcoded ones.");
+                if (exitIfFail)
+                    Environment.Exit(-1);
+                else
+                    return;
             }
+
+            Net.ReadFrom(br);
+
+            br.Dispose();
         }
 
-        public static void RemoveFeature(short* src, short* dst, int offset)
-        {
-            var weights = &Net.FTWeights[offset];
-            for (int i = 0; i < L1_SIZE; i++)
-            {
-                dst[i] = (short)(src[i] - weights[i]);
-            }
-        }
 
         private static string Debug_GetAccumulatorStatus(Position pos)
         {
