@@ -409,7 +409,35 @@ namespace Peeper.Logic.Util
             for (int i = 0; i < moves.Length; i++)
             {
                 if (pos.TryFindMove(moves[i], out Move m))
+                {
                     pos.MakeMove(m);
+                }
+                else
+                {
+                    if (USIClient.Active)
+                    {
+                        var sfen = pos.GetSFen();
+                        var cmd = string.Join(" ", input);
+
+                        MoveList legalList = new();
+                        pos.GenerateLegal(ref legalList);
+                        var legal = string.Join(", ", legalList.ToSpan().ToArray().Select(x => x.Move));
+
+                        MoveList pseudoList = new();
+                        pos.GeneratePseudoLegal(ref pseudoList);
+
+                        StringBuilder sb = new();
+                        sb.AppendLine($"Move {m} wasn't found! at {i} / {moves.Length}");
+                        sb.AppendLine($"cmd: {cmd}");
+                        sb.AppendLine($"CurrentFEN: {sfen}");
+                        sb.AppendLine($"StartFEN: {setup.StartFEN}");
+                        sb.AppendLine($"legal: [{Stringify(legalList.ToSpan())}]/[{StringifyFlipFormat(legalList.ToSpan())}]");
+                        sb.AppendLine($"pseudo: [{Stringify(pseudoList.ToSpan())}]/[{StringifyFlipFormat(pseudoList.ToSpan())}]");
+
+                        FailFast(sb.ToString());
+                    }
+                }
+                    
 
                 setup.SetupMoves.Add(m);
             }
