@@ -427,7 +427,9 @@ namespace Peeper.Logic.Util
                         pos.GeneratePseudoLegal(ref pseudoList);
 
                         StringBuilder sb = new();
-                        sb.Append($"{sfen}\tMove {m} wasn't found!");
+                        sb.AppendLine($"Move {m} wasn't found! at {i} / {moves.Length}");
+                        sb.AppendLine($"cmd: {cmd}");
+                        sb.AppendLine($"CurrentFEN: {sfen}");
                         sb.AppendLine($"StartFEN: {setup.StartFEN}");
                         sb.AppendLine($"legal: [{Stringify(legalList.ToSpan())}]/[{StringifyFlipFormat(legalList.ToSpan())}]");
                         sb.AppendLine($"pseudo: [{Stringify(pseudoList.ToSpan())}]/[{StringifyFlipFormat(pseudoList.ToSpan())}]");
