@@ -204,6 +204,9 @@ namespace Peeper.Logic.Search
 
                 pos.MakeMove(m);
 
+                if (isPV)
+                    System.Runtime.InteropServices.NativeMemory.Clear((ss + 1)->PV, (nuint)(MaxPly * sizeof(Move)));
+
                 var sennichite = pos.CheckSennichite(CuteChessWorkaround);
                 if (sennichite == Sennichite.Win)
                 {
@@ -223,9 +226,6 @@ namespace Peeper.Logic.Search
                 }
 
                 playedMoves++;
-
-                if (isPV)
-                    System.Runtime.InteropServices.NativeMemory.Clear((ss + 1)->PV, (nuint)(MaxPly * sizeof(Move)));
 
                 int newDepth = depth - 1;
 
