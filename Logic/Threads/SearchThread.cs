@@ -230,13 +230,15 @@ namespace Peeper.Logic.Threads
         /// </summary>
         public void Search(ref SearchInformation _info)
         {
-            SearchStack* _ss = stackalloc SearchStack[MaxPly];
-            SearchStack* ss = _ss + 10;
+            Move* PVBuff = AlignedAllocZeroed<Move>(MaxPly * MaxPly);
+            SearchStack* ss = stackalloc SearchStack[MaxPly];
+            ss = &ss[10];
+
             for (int i = -10; i < MaxSearchStackPly; i++)
             {
                 (ss + i)->Clear();
                 (ss + i)->Ply = (short)i;
-                (ss + i)->PV = AlignedAllocZeroed<Move>(MaxPly);
+                (ss + i)->PV = &PVBuff[MaxPly * i];
                 (ss + i)->ContinuationHistory = History.Continuations[0, 0, 0];
             }
 
@@ -255,7 +257,7 @@ namespace Peeper.Logic.Threads
             Span<int> searchScores = stackalloc int[MaxPly];
             int scoreIdx = 0;
 
-            RootMove lastBestRootMove = new RootMove(Move.Null);
+            RootMove lastBestRootMove = new(Move.Null);
             int stability = 0;
 
             int maxDepth = IsMain ? MaxDepth : MaxPly;
@@ -340,11 +342,7 @@ namespace Peeper.Logic.Threads
                     //  so that the move we send is based on an entire depth being searched instead of only a portion of it.
                     RootMoves[0] = lastBestRootMove;
 
-                    for (int i = -10; i < MaxSearchStackPly; i++)
-                    {
-                        NativeMemory.AlignedFree((ss + i)->PV);
-                    }
-
+                    AlignedFree(PVBuff);
                     return;
                 }
 
@@ -358,18 +356,7 @@ namespace Peeper.Logic.Threads
                     stability = 0;
                 }
 
-                lastBestRootMove.Move = RootMoves[0].Move;
-                lastBestRootMove.Score = RootMoves[0].Score;
-                lastBestRootMove.Depth = RootMoves[0].Depth;
-
-                for (int i = 0; i < MaxPly; i++)
-                {
-                    lastBestRootMove.PV[i] = RootMoves[0].PV[i];
-                    if (lastBestRootMove.PV[i] == Move.Null)
-                    {
-                        break;
-                    }
-                }
+                lastBestRootMove = RootMoves[0];
 
                 searchScores[scoreIdx++] = RootMoves[0].Score;
 
@@ -398,10 +385,7 @@ namespace Peeper.Logic.Threads
                 SetStop();
             }
 
-            for (int i = -10; i < MaxSearchStackPly; i++)
-            {
-                NativeMemory.AlignedFree((ss + i)->PV);
-            }
+            AlignedFree(PVBuff);
         }
 
         private static ReadOnlySpan<double> StabilityCoefficients => [2.2, 1.6, 1.4, 1.1, 1, 0.95, 0.9];

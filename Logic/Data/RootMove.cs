@@ -1,4 +1,5 @@
-﻿using System.Runtime.CompilerServices;
+﻿using Peeper.Logic.Search;
+using System.Runtime.CompilerServices;
 
 namespace Peeper.Logic.Data
 {
@@ -39,6 +40,20 @@ namespace Peeper.Logic.Data
             PV[0] = newMove;
             PVLength = 1;
         }
+
+
+        [MethodImpl(Inline)]
+        public void SetPVFrom(SearchStack* ss)
+        {
+            PVLength = 1;
+            fixed (Move* ptr = &PV[1])
+                new Span<Move>(ptr, MaxPly - 1).Clear();
+
+            var ssPV = ss->PV;
+            while (*ssPV)
+                PV[PVLength++] = *ssPV++;
+        }
+
 
         [MethodImpl(Inline)]
         public int CompareTo(RootMove other)

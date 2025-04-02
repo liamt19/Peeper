@@ -4,6 +4,7 @@ using Peeper.Logic.Evaluation;
 using Peeper.Logic.Search.History;
 using Peeper.Logic.Threads;
 using Peeper.Logic.Transposition;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -204,6 +205,9 @@ namespace Peeper.Logic.Search
 
                 pos.MakeMove(m);
 
+                if (isPV)
+                    ClearPV((ss + 1)->PV);
+
                 var sennichite = pos.CheckSennichite(CuteChessWorkaround);
                 if (sennichite == Sennichite.Win)
                 {
@@ -223,9 +227,6 @@ namespace Peeper.Logic.Search
                 }
 
                 playedMoves++;
-
-                if (isPV)
-                    System.Runtime.InteropServices.NativeMemory.Clear((ss + 1)->PV, (nuint)(MaxPly * sizeof(Move)));
 
                 int newDepth = depth - 1;
 
@@ -296,14 +297,7 @@ namespace Peeper.Logic.Search
                         rm.Score = score;
                         rm.Depth = thisThread.SelDepth;
 
-                        rm.PVLength = 1;
-                        for (int pvI = 1; pvI < MaxPly - rm.PVLength; pvI++)
-                            rm.PV[pvI] = Move.Null;
-
-                        for (Move* childMove = (ss + 1)->PV; *childMove != Move.Null; ++childMove)
-                        {
-                            rm.PV[rm.PVLength++] = *childMove;
-                        }
+                        rm.SetPVFrom(ss + 1);
                     }
                     else
                     {
@@ -321,7 +315,7 @@ namespace Peeper.Logic.Search
 
                         if (isPV && !isRoot)
                         {
-                            AppendToPV(ss->PV, m, (ss + 1)->PV);
+                            AppendToPV(ss, m);
                         }
 
                         if (score >= beta)
@@ -500,7 +494,7 @@ namespace Peeper.Logic.Search
 
                         if (isPV)
                         {
-                            AppendToPV(ss->PV, m, (ss + 1)->PV);
+                            AppendToPV(ss, m);
                         }
 
                         if (score >= beta)
@@ -683,14 +677,22 @@ namespace Peeper.Logic.Search
 
         private static int StatBonus(int depth) => depth * StatBonusMult;
 
-        private static void AppendToPV(Move* pv, Move move, Move* childPV)
+
+        private static void AppendToPV(SearchStack* ss, Move move)
         {
-            for (*pv++ = move; childPV != null && *childPV != Move.Null;)
+            var pv = ss->PV;
+            *pv++ = move;
+
+            var childPV = (ss + 1)->PV;
+            do
             {
                 *pv++ = *childPV++;
             }
-            *pv = Move.Null;
+            while (*childPV);
         }
+
+        private static void ClearPV(Move* pv) => NativeMemory.Clear(pv, (nuint)(MaxPly * sizeof(Move)));
+
 
         private static string Debug_GetMovesPlayed(SearchStack* ss)
         {

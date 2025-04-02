@@ -19,12 +19,7 @@ namespace Peeper.Logic.Search
 
         public void Clear()
         {
-            if (PV != null)
-            {
-                NativeMemory.AlignedFree(PV);
-                PV = null;
-            }
-
+            PV = null;
             ContinuationHistory = null;
 
             CurrentMove = Move.Null;

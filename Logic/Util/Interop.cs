@@ -53,5 +53,7 @@ namespace Peeper.Logic.Util
 
             return (T*)block;
         }
+
+        public static unsafe void AlignedFree(void* block) => NativeMemory.AlignedFree(block);
     }
 }
