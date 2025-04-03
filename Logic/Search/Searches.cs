@@ -260,9 +260,6 @@ namespace Peeper.Logic.Search
 
                 pos.UnmakeMove(m);
 
-                if (isRoot)
-                    thisThread.NodeTable[moveFrom][moveTo] += thisThread.Nodes - prevNodes;
-
                 if (thisThread.ShouldStop())
                     return ScoreDraw;
 
@@ -291,6 +288,7 @@ namespace Peeper.Logic.Search
 
                     ref RootMove rm = ref thisThread.RootMoves[rmIndex];
                     rm.AverageScore = (rm.AverageScore == -ScoreInfinite) ? score : ((rm.AverageScore + (score * 2)) / 3);
+                    rm.NodesSpent += (thisThread.Nodes - prevNodes);
 
                     if (playedMoves == 1 || score > alpha)
                     {

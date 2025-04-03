@@ -55,7 +55,6 @@ namespace Peeper.Logic.Threads
         private readonly Barrier _InitBarrier = new Barrier(2);
 
         public ThreadHistory History;
-        public ulong[][] NodeTable;
 
         public Move CurrentMove => RootMoves[PVIndex].Move;
         public string? FriendlyName => _SysThread.Name;
@@ -97,12 +96,6 @@ namespace Peeper.Logic.Threads
 
             History = new ThreadHistory();
             RootMoves = new RootMoveList();
-
-            NodeTable = new ulong[SquareNB][];
-            for (int sq = 0; sq < SquareNB; sq++)
-            {
-                NodeTable[sq] = new ulong[SquareNB];
-            }
 
             _SysThread.Name = $"SearchThread {ThreadIdx}, ID {Environment.CurrentManagedThreadId}";
             if (IsMain)
@@ -238,11 +231,6 @@ namespace Peeper.Logic.Threads
                 (ss + i)->Ply = (short)i;
                 (ss + i)->PV = AlignedAllocZeroed<Move>(MaxPly);
                 (ss + i)->ContinuationHistory = History.Continuations[0, 0, 0];
-            }
-
-            for (int sq = 0; sq < SquareNB; sq++)
-            {
-                Array.Clear(NodeTable[sq]);
             }
 
             //  Create a copy here
@@ -413,27 +401,24 @@ namespace Peeper.Logic.Threads
                 return false;
 
             double multFactor = 1.0;
-#if NO
-            if (RootDepth > 7)
+            if (RootDepth >= 7)
             {
-                double nodeTM = ((1.5 - NodeTable[RootMoves[0].Move.From][RootMoves[0].Move.To] / (double)Nodes) * 1.75);
+                double bestPercent = RootMoves[0].NodesSpent / (double)Nodes;
+                double nodeTM = 2.0 - 1.6 * bestPercent;
+#if NO
                 double bmStability = StabilityCoefficients[Math.Min(stability, StabilityMax)];
 
-                double scoreStability = searchScores[searchScores.Length - 1 - 3] 
+                double scoreStability = searchScores[searchScores.Length - 1 - 3]
                                       - searchScores[searchScores.Length - 1 - 0];
 
                 scoreStability = Math.Max(0.85, Math.Min(1.15, 0.034 * scoreStability));
-
-                multFactor = nodeTM * bmStability * scoreStability;
-            }
 #endif
 
-            if (TimeManager.GetSearchTime() >= TimeManager.SoftTimeLimit * multFactor)
-            {
-                return true;
+                multFactor = nodeTM;
             }
 
-            return false;
+            var now = TimeManager.GetSearchTime();
+            return now >= TimeManager.SoftTimeLimit * multFactor;
         }
 
 
