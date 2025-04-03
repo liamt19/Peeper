@@ -4,6 +4,7 @@ using Peeper.Logic.Evaluation;
 using Peeper.Logic.Search.History;
 using Peeper.Logic.Threads;
 using Peeper.Logic.Transposition;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -205,7 +206,7 @@ namespace Peeper.Logic.Search
                 pos.MakeMove(m);
 
                 if (isPV)
-                    System.Runtime.InteropServices.NativeMemory.Clear((ss + 1)->PV, (nuint)(MaxPly * sizeof(Move)));
+                    NativeMemory.Clear((ss + 1)->PV, (nuint)(MaxPly * sizeof(Move)));
 
                 var sennichite = pos.CheckSennichite(CuteChessWorkaround);
                 if (sennichite == Sennichite.Win)
@@ -441,7 +442,7 @@ namespace Peeper.Logic.Search
 
             alpha = Math.Max(alpha, eval);
 
-        MovesLoop:
+            MovesLoop:
 
             MoveList list = new();
             int size = pos.GenerateQSearch(ref list);
@@ -477,6 +478,9 @@ namespace Peeper.Logic.Search
                 }
                 else if (sennichite == Sennichite.Draw)
                 {
+                    if (isPV)
+                        (ss + 1)->PV[0] = Move.Null;
+
                     score = MakeDrawScore(thisThread.Nodes);
                     goto SkipSearch;
                 }
